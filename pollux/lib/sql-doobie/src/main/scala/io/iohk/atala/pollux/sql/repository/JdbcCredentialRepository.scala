@@ -342,6 +342,7 @@ class JdbcCredentialRepository(xa: Transactor[Task], maxRetries: Int) extends Cr
 
   override def updateWithRequestCredential(
       recordId: DidCommID,
+      subjectId: Option[String],
       request: RequestCredential,
       protocolState: ProtocolState
   ): Task[Int] = {
@@ -350,6 +351,7 @@ class JdbcCredentialRepository(xa: Transactor[Task], maxRetries: Int) extends Cr
         | SET
         |   request_credential_data = $request,
         |   protocol_state = $protocolState,
+        |   subject_id = $subjectId,
         |   updated_at = ${Instant.now}
         | WHERE
         |   id = $recordId

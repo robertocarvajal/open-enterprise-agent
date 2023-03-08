@@ -36,6 +36,11 @@ import java.util.UUID
 import io.iohk.atala.castor.core.model.did.CanonicalPrismDID
 import io.iohk.atala.mercury.model.AttachmentDescriptor
 import io.iohk.atala.pollux.core.model._
+import io.iohk.atala.pollux.core.model.presentation.PresentationAttachment
+import io.iohk.atala.pollux.core.model.presentation.Options
+import io.iohk.atala.pollux.core.model.presentation.PresentationDefinition
+import io.iohk.atala.pollux.core.model.presentation.ClaimFormat
+import io.iohk.atala.pollux.core.model.presentation.Ldp
 
 object CredentialServiceImpl {
   val layer: URLayer[IrisServiceStub & CredentialRepository[Task], CredentialService] =
@@ -75,7 +80,6 @@ private class CredentialServiceImpl(
       pairwiseIssuerDID: DidId,
       pairwiseHolderDID: DidId,
       thid: DidCommID,
-      subjectId: String,
       schemaId: Option[String],
       claims: Map[String, String],
       validityPeriod: Option[Double],
@@ -84,13 +88,15 @@ private class CredentialServiceImpl(
       issuingDID: Option[CanonicalPrismDID]
   ): IO[CredentialServiceError, IssueCredentialRecord] = {
     for {
-      _ <- if (DidValidator.supportedDid(subjectId)) ZIO.unit else ZIO.fail(UnsupportedDidFormat(subjectId))
-      offer = createDidCommOfferCredential(
-        pairwiseIssuerDID = pairwiseIssuerDID,
-        pairwiseHolderDID = pairwiseHolderDID,
-        claims = claims,
-        thid = thid,
-        subjectId = subjectId
+      offer <- ZIO.succeed(
+        createDidCommOfferCredential(
+          pairwiseIssuerDID = pairwiseIssuerDID,
+          pairwiseHolderDID = pairwiseHolderDID,
+          claims = claims,
+          thid = thid,
+          UUID.randomUUID().toString(),
+          "domain"
+        )
       )
       record <- ZIO.succeed(
         IssueCredentialRecord(
@@ -100,7 +106,7 @@ private class CredentialServiceImpl(
           thid = thid,
           schemaId = schemaId,
           role = IssueCredentialRecord.Role.Issuer,
-          subjectId = subjectId,
+          subjectId = None,
           validityPeriod = validityPeriod,
           automaticIssuance = automaticIssuance,
           awaitConfirmation = awaitConfirmation,
@@ -159,7 +165,7 @@ private class CredentialServiceImpl(
           thid = DidCommID(offer.thid.getOrElse(offer.id)),
           schemaId = None,
           role = Role.Holder,
-          subjectId = offerAttachment.subjectId,
+          subjectId = None,
           validityPeriod = None,
           automaticIssuance = None,
           awaitConfirmation = None,
@@ -185,15 +191,19 @@ private class CredentialServiceImpl(
     } yield record
   }
 
-  override def acceptCredentialOffer(recordId: DidCommID): IO[CredentialServiceError, IssueCredentialRecord] = {
+  override def acceptCredentialOffer(
+      recordId: DidCommID,
+      subjectId: String
+  ): IO[CredentialServiceError, IssueCredentialRecord] = {
     for {
+      _ <- if (DidValidator.supportedDid(subjectId)) ZIO.unit else ZIO.fail(UnsupportedDidFormat(subjectId))
       record0 <- getRecordWithState(recordId, ProtocolState.OfferReceived)
       offer <- ZIO
         .fromOption(record0.offerCredentialData)
         .mapError(_ => InvalidFlowStateError(s"No offer found for this record: $recordId"))
       request = createDidCommRequestCredential(offer)
       count <- credentialRepository
-        .updateWithRequestCredential(recordId, request, ProtocolState.RequestPending)
+        .updateWithRequestCredential(recordId, Some(subjectId), request, ProtocolState.RequestPending)
         .mapError(RepositoryError.apply)
       _ <- count match
         case 1 => ZIO.succeed(())
@@ -218,7 +228,7 @@ private class CredentialServiceImpl(
         ProtocolState.OfferSent
       )
       _ <- credentialRepository
-        .updateWithRequestCredential(record.id, request, ProtocolState.RequestReceived)
+        .updateWithRequestCredential(record.id, None, request, ProtocolState.RequestReceived)
         .flatMap {
           case 1 => ZIO.succeed(())
           case n => ZIO.fail(UnexpectedException(s"Invalid row count result: $n"))
@@ -392,7 +402,8 @@ private class CredentialServiceImpl(
       pairwiseHolderDID: DidId,
       claims: Map[String, String],
       thid: DidCommID,
-      subjectId: String
+      challenge: String,
+      domain: String
   ): OfferCredential = {
     val attributes = claims.map { case (k, v) => Attribute(k, v) }
     val credentialPreview = CredentialPreview(attributes = attributes.toSeq)
@@ -403,7 +414,10 @@ private class CredentialServiceImpl(
       // TODO: align with the standard (ATL-3507)
       attachments = Seq(
         AttachmentDescriptor.buildJsonAttachment(
-          payload = CredentialOfferAttachment(subjectId = subjectId)
+          payload = PresentationAttachment(
+            Some(Options(challenge, domain)),
+            PresentationDefinition(format = Some(ClaimFormat(ldp = Some(Ldp(Seq("EcdsaSecp256k1Signature2019"))))))
+          )
         )
       ),
       from = pairwiseIssuerDID,
@@ -589,7 +603,7 @@ private class CredentialServiceImpl(
         issuanceDate = issuanceDate,
         maybeExpirationDate = record.validityPeriod.map(sec => issuanceDate.plusSeconds(sec.toLong)),
         maybeCredentialSchema = None,
-        credentialSubject = claims.updated("id", record.subjectId).asJson,
+        credentialSubject = claims.updated("id", record.subjectId.get).asJson,
         maybeCredentialStatus = None,
         maybeRefreshService = None,
         maybeEvidence = None,

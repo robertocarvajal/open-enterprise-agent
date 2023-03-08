@@ -56,7 +56,6 @@ trait CredentialService {
       pairwiseIssuerDID: DidId,
       pairwiseHolderDID: DidId,
       thid: DidCommID,
-      subjectId: String,
       schemaId: Option[String],
       claims: Map[String, String],
       validityPeriod: Option[Double] = None,
@@ -83,7 +82,7 @@ trait CredentialService {
 
   def receiveCredentialOffer(offer: OfferCredential): IO[CredentialServiceError, IssueCredentialRecord]
 
-  def acceptCredentialOffer(recordId: DidCommID): IO[CredentialServiceError, IssueCredentialRecord]
+  def acceptCredentialOffer(recordId: DidCommID, subjectId: String): IO[CredentialServiceError, IssueCredentialRecord]
 
   def receiveCredentialRequest(request: RequestCredential): IO[CredentialServiceError, IssueCredentialRecord]
 
