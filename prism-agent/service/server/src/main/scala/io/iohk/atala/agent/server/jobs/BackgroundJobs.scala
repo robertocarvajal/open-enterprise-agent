@@ -403,6 +403,7 @@ object BackgroundJobs {
         .getIssueCredentialRecord(credentialRecordUuid)
         .someOrFail(CredentialServiceError.RecordIdNotFound(credentialRecordUuid))
         .map(_.subjectId)
+        .someOrFail(CredentialServiceError.UnexpectedError(s"VC SubjectId not found in credential record: $credentialRecordUuid"))
       proverDID <- ZIO
         .fromEither(PrismDID.fromString(vcSubjectId))
         .mapError(e =>
