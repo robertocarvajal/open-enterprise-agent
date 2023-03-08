@@ -23,6 +23,10 @@ import zio.test.*
 import java.util.UUID
 import io.iohk.atala.castor.core.model.did.CanonicalPrismDID
 import io.iohk.atala.mercury.model.AttachmentDescriptor
+import io.iohk.atala.pollux.core.model.presentation.Options
+import io.iohk.atala.pollux.core.model.presentation.Ldp
+import io.iohk.atala.pollux.core.model.presentation.ClaimFormat
+import io.iohk.atala.pollux.core.model.presentation.PresentationDefinition
 
 object CredentialServiceImplSpec extends ZIOSpecDefault {
 
@@ -45,12 +49,10 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
             svc <- ZIO.service[CredentialService]
             pairwiseIssuerDid = DidId("did:peer:INVITER")
             pairwiseHolderDid = DidId("did:peer:HOLDER")
-            subjectId = "did:prism:HOLDER"
             record <- svc.createRecord(
               thid = thid,
               pairwiseIssuerDID = pairwiseIssuerDid,
               pairwiseHolderDID = pairwiseHolderDid,
-              subjectId = subjectId,
               schemaId = schemaId,
               validityPeriod = validityPeriod,
               automaticIssuance = automaticIssuance,
@@ -60,7 +62,6 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
             assertTrue(record.thid == thid) &&
             assertTrue(record.updatedAt.isEmpty) &&
             assertTrue(record.schemaId == schemaId) &&
-            assertTrue(record.subjectId == subjectId) &&
             assertTrue(record.validityPeriod == validityPeriod) &&
             assertTrue(record.automaticIssuance == automaticIssuance) &&
             assertTrue(record.awaitConfirmation == awaitConfirmation) &&
@@ -87,19 +88,6 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
             assertTrue(record.issueCredentialData.isEmpty) &&
             assertTrue(record.issuedCredentialRaw.isEmpty)
           }
-        }
-      },
-      test("createIssuerCredentialRecord should reject unsupported `subjectId` format") {
-        for {
-          svc <- ZIO.service[CredentialService]
-          did = DidId("did:prism:INVITER")
-          subjectId = "did:unsupported:HOLDER"
-          record <- svc.createRecord(pairwiseIssuerDID = did, subjectId = subjectId).exit
-        } yield {
-          assertTrue(record match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[UnsupportedDidFormat] => true
-            case _                                                                                    => false
-          )
         }
       },
       test("createIssuerCredentialRecord should reject creation with a duplicate 'thid'") {
@@ -157,13 +145,12 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           subjectId = "did:prism:subject"
-          offer = offerCredential(subjectId = subjectId)
+          offer = offerCredential()
           holderRecord <- holderSvc.receiveCredentialOffer(offer)
         } yield {
           assertTrue(holderRecord.thid.toString == offer.thid.get) &&
           assertTrue(holderRecord.updatedAt.isEmpty) &&
           assertTrue(holderRecord.schemaId.isEmpty) &&
-          assertTrue(holderRecord.subjectId == subjectId) &&
           assertTrue(holderRecord.validityPeriod.isEmpty) &&
           assertTrue(holderRecord.automaticIssuance.isEmpty) &&
           assertTrue(holderRecord.awaitConfirmation.isEmpty) &&
@@ -193,11 +180,13 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
+          subjectId = "did:prism:subject"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
-          offerAcceptedRecord <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id)
+          offerAcceptedRecord <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
         } yield {
           assertTrue(offerAcceptedRecord.protocolState == ProtocolState.RequestPending) &&
           assertTrue(offerAcceptedRecord.offerCredentialData.isDefined) &&
+          assertTrue(offerAcceptedRecord.subjectId.contains(subjectId)) &&
           assertTrue(offerAcceptedRecord.offerCredentialData.get.from == offer.from) &&
           assertTrue(offerAcceptedRecord.offerCredentialData.get.to == offer.to) &&
           assertTrue(offerAcceptedRecord.offerCredentialData.get.attachments == offer.attachments) &&
@@ -218,13 +207,28 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
+          subjectId = "did:prism:subject"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
-          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id)
-          exit <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id).exit
+          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
+          exit <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId).exit
         } yield {
           assertTrue(exit match
             case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[InvalidFlowStateError] => true
             case _                                                                                     => false
+          )
+        }
+      },
+      test("acceptCredentialOffer should reject unsupported `subjectId` format") {
+        for {
+          holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
+          offer = offerCredential()
+          subjectId = "did:unknown:subject"
+          offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
+          record <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId).exit
+        } yield {
+          assertTrue(record match
+            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[UnsupportedDidFormat] => true
+            case _                                                                                    => false
           )
         }
       },
@@ -317,8 +321,9 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
+          subjectId = "did:prism:subject"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
-          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id)
+          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
           _ <- holderSvc.markRequestSent(offerReceivedRecord.id)
           issue = issueCredential(thid = Some(offerReceivedRecord.thid))
           credentialReceivedRecord <- holderSvc.receiveCredentialIssue(issue)
@@ -331,8 +336,9 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
+          subjectId = "did:prism:subject"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
-          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id)
+          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
           _ <- holderSvc.markRequestSent(offerReceivedRecord.id)
           issue = issueCredential(thid = Some(offerReceivedRecord.thid))
           credentialReceivedRecord <- holderSvc.receiveCredentialIssue(issue)
@@ -348,8 +354,9 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
+          subjectId = "did:prism:subject"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
-          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id)
+          _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
           _ <- holderSvc.markRequestSent(offerReceivedRecord.id)
           issue = issueCredential(thid = Some(DidCommID()))
           exit <- holderSvc.receiveCredentialIssue(issue).exit
@@ -373,8 +380,9 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           // Holder receives offer
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(OfferCredential.readFromMessage(msg))
           holderRecordId = offerReceivedRecord.id
+          subjectId = "did:prism:subject"
           // Holder accepts offer
-          offerAcceptedRecord <- holderSvc.acceptCredentialOffer(holderRecordId)
+          offerAcceptedRecord <- holderSvc.acceptCredentialOffer(holderRecordId, subjectId)
           // Holder sends offer
           _ <- holderSvc.markRequestSent(holderRecordId)
           msg <- ZIO.fromEither(offerAcceptedRecord.requestCredentialData.get.makeMessage.asJson.as[Message])
@@ -396,15 +404,17 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
   }
 
   private[this] def offerCredential(
-      thid: Option[UUID] = Some(UUID.randomUUID()),
-      subjectId: String = "did:prism:subject"
+      thid: Option[UUID] = Some(UUID.randomUUID())
   ) = OfferCredential(
     from = DidId("did:prism:issuer"),
     to = DidId("did:prism:holder"),
     thid = thid.map(_.toString),
     attachments = Seq(
       AttachmentDescriptor.buildJsonAttachment(
-        payload = CredentialOfferAttachment(subjectId)
+        payload = CredentialOfferAttachment(
+          Options(UUID.randomUUID().toString(), "my-domain"),
+          PresentationDefinition(format = Some(ClaimFormat(ldp = Some(Ldp(Seq("EcdsaSecp256k1Signature2019"))))))
+        )
       )
     ),
     body = OfferCredential.Body(
@@ -434,7 +444,6 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         pairwiseIssuerDID: DidId = DidId("did:prism:issuer"),
         pairwiseHolderDID: DidId = DidId("did:prism:holder-pairwise"),
         thid: DidCommID = DidCommID(),
-        subjectId: String = "did:prism:holder",
         schemaId: Option[String] = None,
         claims: Map[String, String] = Map("name" -> "Alice"),
         validityPeriod: Option[Double] = None,
@@ -446,7 +455,6 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         pairwiseIssuerDID = pairwiseIssuerDID,
         pairwiseHolderDID = pairwiseHolderDID,
         thid = thid,
-        subjectId = subjectId,
         schemaId = schemaId,
         claims = claims,
         validityPeriod = validityPeriod,

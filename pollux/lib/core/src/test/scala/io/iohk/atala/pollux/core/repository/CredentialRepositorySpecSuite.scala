@@ -29,7 +29,7 @@ object CredentialRepositorySpecSuite {
     thid = DidCommID(),
     schemaId = None,
     role = IssueCredentialRecord.Role.Issuer,
-    subjectId = "did:prism:HOLDER",
+    subjectId = None,
     validityPeriod = None,
     automaticIssuance = None,
     awaitConfirmation = None,
@@ -312,6 +312,7 @@ object CredentialRepositorySpecSuite {
         request = requestCredential
         count <- repo.updateWithRequestCredential(
           aRecord.id,
+          None,
           request,
           ProtocolState.RequestPending
         )
