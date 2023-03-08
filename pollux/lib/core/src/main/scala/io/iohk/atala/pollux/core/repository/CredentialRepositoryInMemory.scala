@@ -182,6 +182,7 @@ class CredentialRepositoryInMemory(
 
   override def updateWithRequestCredential(
       recordId: DidCommID,
+      subjectId: Option[String],
       request: RequestCredential,
       protocolState: ProtocolState
   ): Task[Int] = {
@@ -197,6 +198,7 @@ class CredentialRepositoryInMemory(
                   updatedAt = Some(Instant.now),
                   requestCredentialData = Some(request),
                   protocolState = protocolState,
+                  subjectId = subjectId,
                   metaRetries = maxRetries,
                   metaLastFailure = None,
                 )

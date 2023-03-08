@@ -16,7 +16,7 @@ final case class IssueCredentialRecord(
     thid: DidCommID,
     schemaId: Option[String],
     role: Role,
-    subjectId: String,
+    subjectId: Option[String],
     validityPeriod: Option[Double] = None,
     automaticIssuance: Option[Boolean],
     awaitConfirmation: Option[Boolean],
@@ -34,7 +34,7 @@ final case class IssueCredentialRecord(
 final case class ValidIssuedCredentialRecord(
     id: DidCommID,
     issuedCredentialRaw: Option[String],
-    subjectId: String
+    subjectId: Option[String]
 )
 
 object IssueCredentialRecord {
