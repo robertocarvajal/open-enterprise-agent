@@ -27,6 +27,7 @@ import io.iohk.atala.pollux.core.model.presentation.Options
 import io.iohk.atala.pollux.core.model.presentation.Ldp
 import io.iohk.atala.pollux.core.model.presentation.ClaimFormat
 import io.iohk.atala.pollux.core.model.presentation.PresentationDefinition
+import io.iohk.atala.pollux.vc.jwt.JWT
 
 object CredentialServiceImplSpec extends ZIOSpecDefault {
 
@@ -180,7 +181,7 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
-          subjectId = "did:prism:subject"
+          subjectId = "did:prism:60821d6833158c93fde5bb6a40d69996a683bf1fa5cdf32c458395b2887597c3"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
           offerAcceptedRecord <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
         } yield {
@@ -207,7 +208,7 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
-          subjectId = "did:prism:subject"
+          subjectId = "did:prism:60821d6833158c93fde5bb6a40d69996a683bf1fa5cdf32c458395b2887597c3"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
           _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
           exit <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId).exit
@@ -321,9 +322,10 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
-          subjectId = "did:prism:subject"
+          subjectId = "did:prism:60821d6833158c93fde5bb6a40d69996a683bf1fa5cdf32c458395b2887597c3"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
           _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
+          _ <- holderSvc.generateCredentialRequest(offerReceivedRecord.id, JWT("Fake JWT"))
           _ <- holderSvc.markRequestSent(offerReceivedRecord.id)
           issue = issueCredential(thid = Some(offerReceivedRecord.thid))
           credentialReceivedRecord <- holderSvc.receiveCredentialIssue(issue)
@@ -336,9 +338,10 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
-          subjectId = "did:prism:subject"
+          subjectId = "did:prism:60821d6833158c93fde5bb6a40d69996a683bf1fa5cdf32c458395b2887597c3"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
           _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
+          _ <- holderSvc.generateCredentialRequest(offerReceivedRecord.id, JWT("Fake JWT"))
           _ <- holderSvc.markRequestSent(offerReceivedRecord.id)
           issue = issueCredential(thid = Some(offerReceivedRecord.thid))
           credentialReceivedRecord <- holderSvc.receiveCredentialIssue(issue)
@@ -354,9 +357,10 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
         for {
           holderSvc <- ZIO.service[CredentialService].provideLayer(credentialServiceLayer)
           offer = offerCredential()
-          subjectId = "did:prism:subject"
+          subjectId = "did:prism:60821d6833158c93fde5bb6a40d69996a683bf1fa5cdf32c458395b2887597c3"
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(offer)
           _ <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId)
+          _ <- holderSvc.generateCredentialRequest(offerReceivedRecord.id, JWT("Fake JWT"))
           _ <- holderSvc.markRequestSent(offerReceivedRecord.id)
           issue = issueCredential(thid = Some(DidCommID()))
           exit <- holderSvc.receiveCredentialIssue(issue).exit
@@ -380,12 +384,14 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           // Holder receives offer
           offerReceivedRecord <- holderSvc.receiveCredentialOffer(OfferCredential.readFromMessage(msg))
           holderRecordId = offerReceivedRecord.id
-          subjectId = "did:prism:subject"
+          subjectId = "did:prism:60821d6833158c93fde5bb6a40d69996a683bf1fa5cdf32c458395b2887597c3"
           // Holder accepts offer
-          offerAcceptedRecord <- holderSvc.acceptCredentialOffer(holderRecordId, subjectId)
+          _ <- holderSvc.acceptCredentialOffer(holderRecordId, subjectId)
+          // Holder generates proof
+          requestGeneratedRecord <- holderSvc.generateCredentialRequest(offerReceivedRecord.id, JWT("Fake JWT"))
           // Holder sends offer
           _ <- holderSvc.markRequestSent(holderRecordId)
-          msg <- ZIO.fromEither(offerAcceptedRecord.requestCredentialData.get.makeMessage.asJson.as[Message])
+          msg <- ZIO.fromEither(requestGeneratedRecord.requestCredentialData.get.makeMessage.asJson.as[Message])
           // Issuer receives request
           requestReceivedRecord <- issuerSvc.receiveCredentialRequest(RequestCredential.readFromMessage(msg))
           // Issuer accepts request

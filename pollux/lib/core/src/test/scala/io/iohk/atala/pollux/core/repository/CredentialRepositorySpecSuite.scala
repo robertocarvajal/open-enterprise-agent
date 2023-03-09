@@ -312,7 +312,6 @@ object CredentialRepositorySpecSuite {
         request = requestCredential
         count <- repo.updateWithRequestCredential(
           aRecord.id,
-          None,
           request,
           ProtocolState.RequestPending
         )

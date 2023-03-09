@@ -32,9 +32,14 @@ trait CredentialRepository[F[_]] {
       to: Option[IssueCredentialRecord.PublicationState]
   ): F[Int]
 
+  def updateWithSubjectId(
+      recordId: DidCommID,
+      subjectId: String,
+      protocolState: ProtocolState
+  ): F[Int]
+
   def updateWithRequestCredential(
       recordId: DidCommID,
-      subjectId: Option[String],
       request: RequestCredential,
       protocolState: ProtocolState
   ): F[Int]

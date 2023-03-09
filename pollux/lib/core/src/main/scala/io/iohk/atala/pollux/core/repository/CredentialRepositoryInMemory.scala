@@ -180,9 +180,36 @@ class CredentialRepositoryInMemory(
     } yield store.values.find(_.thid == thid)
   }
 
+  override def updateWithSubjectId(
+      recordId: DidCommID,
+      subjectId: String,
+      protocolState: ProtocolState
+  ): Task[Int] = {
+    for {
+      maybeRecord <- getIssueCredentialRecord(recordId)
+      count <- maybeRecord
+        .map(record =>
+          for {
+            _ <- storeRef.update(r =>
+              r.updated(
+                recordId,
+                record.copy(
+                  updatedAt = Some(Instant.now),
+                  protocolState = protocolState,
+                  subjectId = Some(subjectId),
+                  metaRetries = maxRetries,
+                  metaLastFailure = None,
+                )
+              )
+            )
+          } yield 1
+        )
+        .getOrElse(ZIO.succeed(1))
+    } yield count
+  }
+
   override def updateWithRequestCredential(
       recordId: DidCommID,
-      subjectId: Option[String],
       request: RequestCredential,
       protocolState: ProtocolState
   ): Task[Int] = {
@@ -198,7 +225,6 @@ class CredentialRepositoryInMemory(
                   updatedAt = Some(Instant.now),
                   requestCredentialData = Some(request),
                   protocolState = protocolState,
-                  subjectId = subjectId,
                   metaRetries = maxRetries,
                   metaLastFailure = None,
                 )

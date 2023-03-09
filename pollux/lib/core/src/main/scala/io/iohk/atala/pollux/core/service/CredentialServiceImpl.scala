@@ -21,6 +21,7 @@ import io.iohk.atala.pollux.vc.jwt.Issuer
 import io.iohk.atala.pollux.vc.jwt.JwtCredentialPayload
 import io.iohk.atala.pollux.vc.jwt.W3CCredential
 import io.iohk.atala.pollux.vc.jwt.W3cCredentialPayload
+import io.iohk.atala.pollux.vc.jwt.W3cPresentationPayload
 import io.iohk.atala.prism.crypto.MerkleInclusionProof
 import io.iohk.atala.prism.crypto.MerkleTreeKt
 import io.iohk.atala.prism.crypto.Sha256
@@ -41,6 +42,9 @@ import io.iohk.atala.pollux.core.model.presentation.Options
 import io.iohk.atala.pollux.core.model.presentation.PresentationDefinition
 import io.iohk.atala.pollux.core.model.presentation.ClaimFormat
 import io.iohk.atala.pollux.core.model.presentation.Ldp
+import io.iohk.atala.pollux.vc.jwt.{PresentationPayload, JWT}
+import io.iohk.atala.mercury.model.JsonData
+import io.iohk.atala.castor.core.model.did.PrismDID
 
 object CredentialServiceImpl {
   val layer: URLayer[IrisServiceStub & CredentialRepository[Task], CredentialService] =
@@ -196,20 +200,76 @@ private class CredentialServiceImpl(
       subjectId: String
   ): IO[CredentialServiceError, IssueCredentialRecord] = {
     for {
-      _ <- if (DidValidator.supportedDid(subjectId)) ZIO.unit else ZIO.fail(UnsupportedDidFormat(subjectId))
-      record0 <- getRecordWithState(recordId, ProtocolState.OfferReceived)
-      offer <- ZIO
-        .fromOption(record0.offerCredentialData)
-        .mapError(_ => InvalidFlowStateError(s"No offer found for this record: $recordId"))
-      request = createDidCommRequestCredential(offer)
+      prismDID <- ZIO
+        .fromEither(PrismDID.fromString(subjectId))
+        .mapError(_ => CredentialServiceError.UnsupportedDidFormat(subjectId))
+      record <- getRecordWithState(recordId, ProtocolState.OfferReceived)
       count <- credentialRepository
-        .updateWithRequestCredential(recordId, Some(subjectId), request, ProtocolState.RequestPending)
+        .updateWithSubjectId(recordId, subjectId, ProtocolState.RequestPending)
         .mapError(RepositoryError.apply)
       _ <- count match
         case 1 => ZIO.succeed(())
         case n => ZIO.fail(RecordIdNotFound(recordId))
       record <- credentialRepository
-        .getIssueCredentialRecord(record0.id)
+        .getIssueCredentialRecord(record.id)
+        .mapError(RepositoryError.apply)
+        .flatMap {
+          case None        => ZIO.fail(RecordIdNotFound(recordId))
+          case Some(value) => ZIO.succeed(value)
+        }
+    } yield record
+  }
+
+  override def createPresentationPayload(
+      recordId: DidCommID,
+      subject: Issuer
+  ): IO[CredentialServiceError, PresentationPayload] = {
+    for {
+      record <- getRecordWithState(recordId, ProtocolState.RequestPending)
+      offer <- ZIO
+        .fromOption(record.offerCredentialData)
+        .mapError(_ => UnexpectedError(s"Offer data not found in record: $recordId"))
+      attachmentDescriptor <- ZIO
+        .fromOption(offer.attachments.headOption)
+        .mapError(_ => UnexpectedError(s"Attachments not found in record: $recordId"))
+      json <- attachmentDescriptor.data match
+        case JsonData(json) => ZIO.succeed(json.asJson)
+        case _              => ZIO.fail(UnexpectedError("Attachment doesn't contain JsonData"))
+      options <- ZIO
+        .fromEither(json.as[PresentationAttachment].map(_.options))
+        .mapError(df => UnexpectedError(df.getMessage))
+    } yield {
+      W3cPresentationPayload(
+        `@context` = Vector("https://www.w3.org/2018/presentations/v1"),
+        maybeId = None,
+        `type` = Vector("VerifiablePresentation"),
+        verifiableCredential = IndexedSeq.empty,
+        holder = subject.did.value,
+        verifier = IndexedSeq.empty ++ options.map(_.domain),
+        maybeIssuanceDate = None,
+        maybeExpirationDate = None
+      ).toJwtPresentationPayload.copy(maybeNonce = options.map(_.challenge))
+    }
+  }
+
+  override def generateCredentialRequest(
+      recordId: DidCommID,
+      signedPresentation: JWT
+  ): IO[CredentialServiceError, IssueCredentialRecord] = {
+    for {
+      record <- getRecordWithState(recordId, ProtocolState.RequestPending)
+      offer <- ZIO
+        .fromOption(record.offerCredentialData)
+        .mapError(_ => InvalidFlowStateError(s"No offer found for this record: $recordId"))
+      request = createDidCommRequestCredential(offer, signedPresentation)
+      count <- credentialRepository
+        .updateWithRequestCredential(recordId, request, ProtocolState.RequestGenerated)
+        .mapError(RepositoryError.apply)
+      _ <- count match
+        case 1 => ZIO.succeed(())
+        case n => ZIO.fail(RecordIdNotFound(recordId))
+      record <- credentialRepository
+        .getIssueCredentialRecord(record.id)
         .mapError(RepositoryError.apply)
         .flatMap {
           case None        => ZIO.fail(RecordIdNotFound(recordId))
@@ -228,7 +288,7 @@ private class CredentialServiceImpl(
         ProtocolState.OfferSent
       )
       _ <- credentialRepository
-        .updateWithRequestCredential(record.id, None, request, ProtocolState.RequestReceived)
+        .updateWithRequestCredential(record.id, request, ProtocolState.RequestReceived)
         .flatMap {
           case 1 => ZIO.succeed(())
           case n => ZIO.fail(UnexpectedException(s"Invalid row count result: $n"))
@@ -295,7 +355,7 @@ private class CredentialServiceImpl(
   override def markRequestSent(recordId: DidCommID): IO[CredentialServiceError, IssueCredentialRecord] =
     updateCredentialRecordProtocolState(
       recordId,
-      IssueCredentialRecord.ProtocolState.RequestPending,
+      IssueCredentialRecord.ProtocolState.RequestGenerated,
       IssueCredentialRecord.ProtocolState.RequestSent
     )
 
@@ -426,14 +486,23 @@ private class CredentialServiceImpl(
     )
   }
 
-  private[this] def createDidCommRequestCredential(offer: OfferCredential): RequestCredential = {
+  private[this] def createDidCommRequestCredential(
+      offer: OfferCredential,
+      signedPresentation: JWT
+  ): RequestCredential = {
     RequestCredential(
       body = RequestCredential.Body(
         goal_code = offer.body.goal_code,
         comment = offer.body.comment,
         formats = offer.body.formats
       ),
-      attachments = offer.attachments,
+      attachments = Seq(
+        AttachmentDescriptor
+          .buildBase64Attachment(
+            payload = signedPresentation.value.getBytes(),
+            mediaType = Some("prism/jwt")
+          )
+      ),
       thid = offer.thid.orElse(Some(offer.id)),
       from = offer.to,
       to = offer.from
@@ -449,7 +518,7 @@ private class CredentialServiceImpl(
         more_available = None,
         formats = request.body.formats
       ),
-      attachments = request.attachments,
+      attachments = Nil,
       thid = request.thid.orElse(Some(request.id)),
       from = request.to,
       to = request.from
@@ -603,7 +672,8 @@ private class CredentialServiceImpl(
         issuanceDate = issuanceDate,
         maybeExpirationDate = record.validityPeriod.map(sec => issuanceDate.plusSeconds(sec.toLong)),
         maybeCredentialSchema = None,
-        credentialSubject = claims.updated("id", record.subjectId.get).asJson,
+        // TODO: Get subject DID from record.request.attachments after verifying the signature/challenge/domain
+        credentialSubject = claims.updated("id", record.subjectId.getOrElse("did:prism:12345")).asJson,
         maybeCredentialStatus = None,
         maybeRefreshService = None,
         maybeEvidence = None,

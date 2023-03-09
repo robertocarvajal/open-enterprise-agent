@@ -18,6 +18,7 @@ import java.security.spec.ECGenParameterSpec
 import java.time.Instant
 import java.util.UUID
 import io.iohk.atala.castor.core.model.did.CanonicalPrismDID
+import io.iohk.atala.pollux.vc.jwt.{PresentationPayload, JWT}
 
 trait CredentialService {
 
@@ -83,6 +84,10 @@ trait CredentialService {
   def receiveCredentialOffer(offer: OfferCredential): IO[CredentialServiceError, IssueCredentialRecord]
 
   def acceptCredentialOffer(recordId: DidCommID, subjectId: String): IO[CredentialServiceError, IssueCredentialRecord]
+
+  def createPresentationPayload(recordId: DidCommID, subject: Issuer): IO[CredentialServiceError, PresentationPayload]
+
+  def generateCredentialRequest(recordId: DidCommID, signedPresentation: JWT): IO[CredentialServiceError, IssueCredentialRecord]
 
   def receiveCredentialRequest(request: RequestCredential): IO[CredentialServiceError, IssueCredentialRecord]
 
