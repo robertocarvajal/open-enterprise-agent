@@ -68,6 +68,7 @@ object BackgroundJobs {
         .getIssueCredentialRecordsByStates(
           IssueCredentialRecord.ProtocolState.OfferPending,
           IssueCredentialRecord.ProtocolState.RequestPending,
+          IssueCredentialRecord.ProtocolState.RequestGenerated,
           IssueCredentialRecord.ProtocolState.RequestReceived,
           IssueCredentialRecord.ProtocolState.CredentialPending,
           IssueCredentialRecord.ProtocolState.CredentialGenerated
@@ -150,11 +151,45 @@ object BackgroundJobs {
               _,
               _,
               Role.Holder,
-              _,
+              Some(subjectId),
               _,
               _,
               _,
               RequestPending,
+              _,
+              _,
+              None,
+              _,
+              _,
+              _,
+              _,
+              _,
+              _
+            ) =>
+          for {
+            credentialService <- ZIO.service[CredentialService]
+            prismDID <- ZIO
+              .fromEither(PrismDID.fromString(subjectId))
+              .mapError(_ => CredentialServiceError.UnsupportedDidFormat(subjectId))
+            subject <- createPrismDIDIssuer(prismDID, VerificationRelationship.Authentication, true)
+            presentationPayload <- credentialService.createPresentationPayload(id, subject)
+            signedPayload = JwtPresentation.encodeJwt(presentationPayload.toJwtPresentationPayload, subject)
+            _ <- credentialService.generateCredentialRequest(id, signedPayload)
+          } yield ()
+
+        // Request should be sent from Holder to Issuer
+        case IssueCredentialRecord(
+              id,
+              _,
+              _,
+              _,
+              _,
+              Role.Holder,
+              _,
+              _,
+              _,
+              _,
+              RequestGenerated,
               _,
               _,
               Some(request),
@@ -403,7 +438,9 @@ object BackgroundJobs {
         .getIssueCredentialRecord(credentialRecordUuid)
         .someOrFail(CredentialServiceError.RecordIdNotFound(credentialRecordUuid))
         .map(_.subjectId)
-        .someOrFail(CredentialServiceError.UnexpectedError(s"VC SubjectId not found in credential record: $credentialRecordUuid"))
+        .someOrFail(
+          CredentialServiceError.UnexpectedError(s"VC SubjectId not found in credential record: $credentialRecordUuid")
+        )
       proverDID <- ZIO
         .fromEither(PrismDID.fromString(vcSubjectId))
         .mapError(e =>

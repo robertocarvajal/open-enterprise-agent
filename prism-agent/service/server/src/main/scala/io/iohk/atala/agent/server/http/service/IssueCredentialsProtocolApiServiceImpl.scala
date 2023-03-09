@@ -117,6 +117,7 @@ class IssueCredentialsProtocolApiServiceImpl(
   ): Route = {
     val result = for {
       id <- recordId.toDidCommID
+      prismDID <- ZIO.fromEither(PrismDID.fromString(request.subjectId)).mapError(HttpServiceError.InvalidPayload.apply)
       outcome <- credentialService
         .acceptCredentialOffer(id, request.subjectId)
         .mapError(HttpServiceError.DomainError[CredentialServiceError].apply)
