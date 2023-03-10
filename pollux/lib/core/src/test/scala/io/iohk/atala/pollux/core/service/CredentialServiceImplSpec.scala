@@ -27,14 +27,16 @@ import io.iohk.atala.pollux.core.model.presentation.Options
 import io.iohk.atala.pollux.core.model.presentation.Ldp
 import io.iohk.atala.pollux.core.model.presentation.ClaimFormat
 import io.iohk.atala.pollux.core.model.presentation.PresentationDefinition
-import io.iohk.atala.pollux.vc.jwt.JWT
+import io.iohk.atala.pollux.vc.jwt._
 
 object CredentialServiceImplSpec extends ZIOSpecDefault {
 
   val irisStubLayer = ZLayer.fromZIO(
     ZIO.succeed(IrisServiceGrpc.stub(ManagedChannelBuilder.forAddress("localhost", 9999).usePlaintext.build))
   )
-  val credentialServiceLayer = irisStubLayer ++ CredentialRepositoryInMemory.layer >>> CredentialServiceImpl.layer
+  val didResolverLayer = ZLayer.fromZIO(ZIO.succeed(makeResolver(Map.empty)))
+  val credentialServiceLayer =
+    irisStubLayer ++ CredentialRepositoryInMemory.layer ++ didResolverLayer >>> CredentialServiceImpl.layer
 
   override def spec = {
     suite("CredentialServiceImpl")(
@@ -444,6 +446,21 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
     attachments = Nil,
     body = IssueCredential.Body()
   )
+
+  private[this] def makeResolver(lookup: Map[String, DIDDocument]): DidResolver = (didUrl: String) => {
+    lookup
+      .get(didUrl)
+      .fold(
+        ZIO.succeed(DIDResolutionFailed(NotFound(s"DIDDocument not found for $didUrl")))
+      )((didDocument: DIDDocument) => {
+        ZIO.succeed(
+          DIDResolutionSucceeded(
+            didDocument,
+            DIDDocumentMetadata()
+          )
+        )
+      })
+  }
 
   extension (svc: CredentialService)
     def createRecord(
