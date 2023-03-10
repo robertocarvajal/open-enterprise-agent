@@ -1,62 +1,64 @@
 package io.iohk.atala.agent.server.jobs
 
-import scala.jdk.CollectionConverters.*
-import zio.*
-import io.iohk.atala.pollux.core.service.CredentialService
-import io.iohk.atala.pollux.core.model.IssueCredentialRecord
-import io.iohk.atala.pollux.core.model.error.CredentialServiceError
-import io.iohk.atala.pollux.core.service.CredentialService
-import io.iohk.atala.pollux.vc.jwt.W3cCredentialPayload
-import zio.Duration
-import java.time.Instant
-import java.time.Clock
-import java.time.ZoneId
+import cats.syntax.all._
+import com.ionspin.kotlin.bignum.integer.BigInteger
+import com.ionspin.kotlin.bignum.integer.Sign
+import io.circe.Json
+import io.circe.parser._
+import io.circe.syntax._
+import io.iohk.atala.agent.server.config.AppConfig
+import io.iohk.atala.agent.server.http.model.InvalidState
+import io.iohk.atala.agent.server.http.model.NotImplemented
+import io.iohk.atala.agent.walletapi.model._
+import io.iohk.atala.agent.walletapi.model.error.DIDSecretStorageError.KeyNotFoundError
+import io.iohk.atala.agent.walletapi.model.error._
+import io.iohk.atala.agent.walletapi.service.ManagedDIDService
+import io.iohk.atala.castor.core.model.did._
+import io.iohk.atala.castor.core.service.DIDService
 import io.iohk.atala.mercury._
 import io.iohk.atala.mercury.model._
 import io.iohk.atala.mercury.model.error._
 import io.iohk.atala.mercury.protocol.issuecredential._
 import io.iohk.atala.mercury.protocol.presentproof._
 import io.iohk.atala.mercury.protocol.reportproblem.v2._
-import io.iohk.atala.resolvers.DIDResolver
-import io.iohk.atala.resolvers.UniversalDidResolver
-import java.io.IOException
-import io.iohk.atala.pollux.vc.jwt._
-import io.iohk.atala.pollux.vc.jwt.W3CCredential
+import io.iohk.atala.pollux.core.model.IssueCredentialRecord
 import io.iohk.atala.pollux.core.model._
-import io.iohk.atala.pollux.core.service.PresentationService
+import io.iohk.atala.pollux.core.model.error.CredentialServiceError
 import io.iohk.atala.pollux.core.model.error.PresentationError
 import io.iohk.atala.pollux.core.model.error.PresentationError._
-import io.iohk.atala.agent.server.http.model.{InvalidState, NotImplemented}
-import org.didcommx.didcomm.DIDComm
-import io.iohk.atala.agent.walletapi.model._
-import io.iohk.atala.agent.walletapi.model.error._
-import io.iohk.atala.agent.walletapi.model.error.DIDSecretStorageError.KeyNotFoundError
-import io.iohk.atala.agent.walletapi.service.ManagedDIDService
+import io.iohk.atala.pollux.core.service.CredentialService
+import io.iohk.atala.pollux.core.service.PresentationService
 import io.iohk.atala.pollux.vc.jwt.ES256KSigner
-import io.iohk.atala.castor.core.model.did._
-import java.security.KeyFactory
-import java.security.spec.EncodedKeySpec
-import java.security.spec.ECPrivateKeySpec
-import org.bouncycastle.jce.spec.ECNamedCurveSpec
-import org.bouncycastle.jce.ECNamedCurveTable
-import com.ionspin.kotlin.bignum.integer.BigInteger
-import com.ionspin.kotlin.bignum.integer.Sign
-import io.iohk.atala.pollux.vc.jwt.Issuer
-import java.security.spec.ECPublicKeySpec
-import java.security.spec.ECPoint
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import io.circe.Json
-import io.circe.syntax._
 import io.iohk.atala.pollux.vc.jwt.JWT
+import io.iohk.atala.pollux.vc.jwt.W3CCredential
+import io.iohk.atala.pollux.vc.jwt.W3cCredentialPayload
+import io.iohk.atala.pollux.vc.jwt.JwtPresentation
+import io.iohk.atala.pollux.vc.jwt.CredentialVerification
 import io.iohk.atala.pollux.vc.jwt.{DidResolver => JwtDidResolver}
-import io.iohk.atala.agent.server.config.AppConfig
-import io.circe.parser._
+import io.iohk.atala.pollux.vc.jwt.{Issuer => JwtIssuer}
+import io.iohk.atala.resolvers.DIDResolver
+import io.iohk.atala.resolvers.UniversalDidResolver
+import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.jce.spec.ECNamedCurveSpec
+import org.didcommx.didcomm.DIDComm
+import zio.Duration
+import zio.*
 import zio.prelude.AssociativeBothOps
 import zio.prelude.Validation
 import zio.prelude.ZValidation._
-import cats.syntax.all._
-import io.iohk.atala.castor.core.service.DIDService
+
+import java.io.IOException
+import java.security.KeyFactory
+import java.security.spec.ECPoint
+import java.security.spec.ECPrivateKeySpec
+import java.security.spec.ECPublicKeySpec
+import java.security.spec.EncodedKeySpec
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
+import scala.jdk.CollectionConverters.*
 
 object BackgroundJobs {
 
@@ -168,12 +170,12 @@ object BackgroundJobs {
             ) =>
           for {
             credentialService <- ZIO.service[CredentialService]
-            prismDID <- ZIO
+            subjectDID <- ZIO
               .fromEither(PrismDID.fromString(subjectId))
               .mapError(_ => CredentialServiceError.UnsupportedDidFormat(subjectId))
-            subject <- createPrismDIDIssuer(prismDID, VerificationRelationship.Authentication, true)
-            presentationPayload <- credentialService.createPresentationPayload(id, subject)
-            signedPayload = JwtPresentation.encodeJwt(presentationPayload.toJwtPresentationPayload, subject)
+            jwtIssuer <- createJwtIssuer(subjectDID, VerificationRelationship.Authentication, true)
+            presentationPayload <- credentialService.createPresentationPayload(id, jwtIssuer)
+            signedPayload = JwtPresentation.encodeJwt(presentationPayload.toJwtPresentationPayload, jwtIssuer)
             _ <- credentialService.generateCredentialRequest(id, signedPayload)
           } yield ()
 
@@ -258,7 +260,7 @@ object BackgroundJobs {
               _,
               Some(issue),
               _,
-              Some(issuingDID),
+              Some(issuerDID),
               _,
               _,
               _,
@@ -268,13 +270,13 @@ object BackgroundJobs {
           // Set PublicationState to PublicationPending
           for {
             credentialService <- ZIO.service[CredentialService]
-            issuer <- createPrismDIDIssuer(issuingDID)
+            jwtIssuer <- createJwtIssuer(issuerDID)
             w3Credential <- credentialService.createCredentialPayloadFromRecord(
               record,
-              issuer,
+              jwtIssuer,
               Instant.now()
             )
-            signedJwtCredential = W3CCredential.toEncodedJwt(w3Credential, issuer)
+            signedJwtCredential = W3CCredential.toEncodedJwt(w3Credential, jwtIssuer)
             issueCredential = IssueCredential.build(
               fromDID = issue.from,
               toDID = issue.to,
@@ -376,11 +378,11 @@ object BackgroundJobs {
   // TODO: Improvements needed here:
   // - For now, we include the long form in the JWT credential to facilitate validation on client-side, but resolution should be used instead.
   // - Improve consistency in error handling (ATL-3210)
-  private[this] def createPrismDIDIssuer(
+  private[this] def createJwtIssuer(
       issuingDID: PrismDID,
       verificationRelationship: VerificationRelationship = VerificationRelationship.AssertionMethod,
       allowUnpublishedIssuingDID: Boolean = false
-  ): ZIO[DIDService & ManagedDIDService, Throwable, Issuer] = {
+  ): ZIO[DIDService & ManagedDIDService, Throwable, JwtIssuer] = {
     for {
       managedDIDService <- ZIO.service[ManagedDIDService]
       didService <- ZIO.service[DIDService]
@@ -396,7 +398,7 @@ object BackgroundJobs {
       longFormPrismDID = PrismDID.buildLongFormFromOperation(didState.createOperation)
       // Automatically infer keyId to use by resolving DID and choose the corresponding VerificationRelationship
       issuingKeyId <- didService
-        .resolveDID(issuingDID)
+        .resolveDID(if (allowUnpublishedIssuingDID) longFormPrismDID else issuingDID)
         .mapError(e => RuntimeException(s"Error occured while resolving Issuing DID during VC creation: ${e.toString}"))
         .someOrFail(RuntimeException(s"Issuing DID resolution result is not found"))
         .map { case (_, didData) => didData.publicKeys.find(_.purpose == verificationRelationship).map(_.id) }
@@ -410,12 +412,12 @@ object BackgroundJobs {
           RuntimeException(s"Issuer key-pair does not exist in the wallet: ${issuingDID.toString}#$issuingKeyId")
         )
       (privateKey, publicKey) = ecKeyPair
-      issuer = Issuer(
+      jwtIssuer = JwtIssuer(
         io.iohk.atala.pollux.vc.jwt.DID(longFormPrismDID.toString),
         ES256KSigner(privateKey),
         publicKey
       )
-    } yield issuer
+    } yield jwtIssuer
   }
 
   private[this] def createPrismDIDIssuerFromPresentationCredentials(
@@ -449,11 +451,7 @@ object BackgroundJobs {
               s"One of the credential(s) subject is not a valid Prism DID: ${vcSubjectId}"
             )
         )
-      prover <- createPrismDIDIssuer(
-        proverDID,
-        verificationRelationship = VerificationRelationship.Authentication,
-        allowUnpublishedIssuingDID = true
-      )
+      prover <- createJwtIssuer(proverDID, VerificationRelationship.Authentication, true)
     } yield prover
 
   private[this] def performPresentation(
