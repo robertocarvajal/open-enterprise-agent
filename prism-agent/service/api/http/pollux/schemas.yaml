@@ -270,6 +270,7 @@ components:
                 - OfferSent
                 - OfferReceived
                 - RequestPending
+                - RequestGenerated
                 - RequestSent
                 - RequestReceived
                 - ProblemReportPending
