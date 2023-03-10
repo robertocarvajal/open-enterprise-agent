@@ -174,7 +174,8 @@ object BackgroundJobs {
             subjectDID <- ZIO
               .fromEither(PrismDID.fromString(subjectId))
               .mapError(_ => CredentialServiceError.UnsupportedDidFormat(subjectId))
-            jwtIssuer <- createJwtIssuer(subjectDID, VerificationRelationship.Authentication, true)
+            longFormPrismDID <- getLongForm(subjectDID, true)
+            jwtIssuer <- createJwtIssuer(longFormPrismDID, VerificationRelationship.Authentication)
             presentationPayload <- credentialService.createPresentationPayload(id, jwtIssuer)
             signedPayload = JwtPresentation.encodeJwt(presentationPayload.toJwtPresentationPayload, jwtIssuer)
             _ <- credentialService.generateCredentialRequest(id, signedPayload)
@@ -271,7 +272,8 @@ object BackgroundJobs {
           // Set PublicationState to PublicationPending
           for {
             credentialService <- ZIO.service[CredentialService]
-            jwtIssuer <- createJwtIssuer(issuerDID)
+            longFormPrismDID <- getLongForm(issuerDID, false)
+            jwtIssuer <- createJwtIssuer(longFormPrismDID, VerificationRelationship.AssertionMethod)
             w3Credential <- credentialService.createCredentialPayloadFromRecord(
               record,
               jwtIssuer,
@@ -387,45 +389,52 @@ object BackgroundJobs {
 
   }
 
+  private[this] def getLongForm(
+      did: PrismDID,
+      allowUnpublishedIssuingDID: Boolean = false
+  ): ZIO[ManagedDIDService, Throwable, LongFormPrismDID] = {
+    for {
+      managedDIDService <- ZIO.service[ManagedDIDService]
+      didState <- managedDIDService
+        .getManagedDIDState(did.asCanonical)
+        .mapError(e => RuntimeException(s"Error occurred while getting did from wallet: ${e.toString}"))
+        .someOrFail(RuntimeException(s"Issuer DID does not exist in the wallet: $did"))
+        .flatMap {
+          case s: ManagedDIDState.Published    => ZIO.succeed(s)
+          case s if allowUnpublishedIssuingDID => ZIO.succeed(s)
+          case _                               => ZIO.fail(RuntimeException(s"Issuer DID must be published: $did"))
+        }
+      longFormPrismDID = PrismDID.buildLongFormFromOperation(didState.createOperation)
+    } yield longFormPrismDID
+  }
+
   // TODO: Improvements needed here:
-  // - For now, we include the long form in the JWT credential to facilitate validation on client-side, but resolution should be used instead.
   // - Improve consistency in error handling (ATL-3210)
   private[this] def createJwtIssuer(
-      issuingDID: PrismDID,
-      verificationRelationship: VerificationRelationship = VerificationRelationship.AssertionMethod,
-      allowUnpublishedIssuingDID: Boolean = false
+      jwtIssuerDID: PrismDID,
+      verificationRelationship: VerificationRelationship
   ): ZIO[DIDService & ManagedDIDService, Throwable, JwtIssuer] = {
     for {
       managedDIDService <- ZIO.service[ManagedDIDService]
       didService <- ZIO.service[DIDService]
-      didState <- managedDIDService
-        .getManagedDIDState(issuingDID.asCanonical)
-        .mapError(e => RuntimeException(s"Error occured while getting did from wallet: ${e.toString}"))
-        .someOrFail(RuntimeException(s"Issuer DID does not exist in the wallet: $issuingDID"))
-        .flatMap {
-          case s: ManagedDIDState.Published    => ZIO.succeed(s)
-          case s if allowUnpublishedIssuingDID => ZIO.succeed(s)
-          case _ => ZIO.fail(RuntimeException(s"Issuer DID must be published: $issuingDID"))
-        }
-      longFormPrismDID = PrismDID.buildLongFormFromOperation(didState.createOperation)
       // Automatically infer keyId to use by resolving DID and choose the corresponding VerificationRelationship
       issuingKeyId <- didService
-        .resolveDID(if (allowUnpublishedIssuingDID) longFormPrismDID else issuingDID)
+        .resolveDID(jwtIssuerDID)
         .mapError(e => RuntimeException(s"Error occured while resolving Issuing DID during VC creation: ${e.toString}"))
         .someOrFail(RuntimeException(s"Issuing DID resolution result is not found"))
         .map { case (_, didData) => didData.publicKeys.find(_.purpose == verificationRelationship).map(_.id) }
         .someOrFail(
-          RuntimeException(s"Issuing DID doesn't have a key in ${verificationRelationship.name} to use: $issuingDID")
+          RuntimeException(s"Issuing DID doesn't have a key in ${verificationRelationship.name} to use: $jwtIssuerDID")
         )
       ecKeyPair <- managedDIDService
-        .javaKeyPairWithDID(issuingDID.asCanonical, issuingKeyId)
+        .javaKeyPairWithDID(jwtIssuerDID.asCanonical, issuingKeyId)
         .mapError(e => RuntimeException(s"Error occurred while getting issuer key-pair: ${e.toString}"))
         .someOrFail(
-          RuntimeException(s"Issuer key-pair does not exist in the wallet: ${issuingDID.toString}#$issuingKeyId")
+          RuntimeException(s"Issuer key-pair does not exist in the wallet: ${jwtIssuerDID.toString}#$issuingKeyId")
         )
       (privateKey, publicKey) = ecKeyPair
       jwtIssuer = JwtIssuer(
-        io.iohk.atala.pollux.vc.jwt.DID(longFormPrismDID.toString),
+        io.iohk.atala.pollux.vc.jwt.DID(jwtIssuerDID.toString),
         ES256KSigner(privateKey),
         publicKey
       )
@@ -463,8 +472,9 @@ object BackgroundJobs {
               s"One of the credential(s) subject is not a valid Prism DID: ${vcSubjectId}"
             )
         )
-      prover <- createJwtIssuer(proverDID, VerificationRelationship.Authentication, true)
-    } yield prover
+      longFormPrismDID <- getLongForm(proverDID, true)
+      jwtIssuer <- createJwtIssuer(longFormPrismDID, VerificationRelationship.Authentication)
+    } yield jwtIssuer
 
   private[this] def performPresentation(
       record: PresentationRecord
