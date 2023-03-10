@@ -100,7 +100,8 @@ object BackgroundJobs {
   private[this] def performExchange(
       record: IssueCredentialRecord
   ): URIO[
-    DidOps & DIDResolver & JwtDidResolver & HttpClient & CredentialService & DIDService & ManagedDIDService,
+    DidOps & DIDResolver & JwtDidResolver & HttpClient & CredentialService & DIDService & ManagedDIDService &
+      PresentationService,
     Unit
   ] = {
     import IssueCredentialRecord._
@@ -362,6 +363,16 @@ object BackgroundJobs {
     } yield ()
 
     aux
+      .tapError(ex =>
+        for {
+          presentationService <- ZIO.service[PresentationService]
+          _ <- presentationService
+            .markFailure(record.id, Some(ex.toString))
+            .catchAll(throwable =>
+              ZIO.logErrorCause(s"Issue Credential fail to markFailure: ${record.id}", Cause.fail(throwable))
+            )
+        } yield ()
+      )
       .catchAll {
         case ex: MercuryException =>
           ZIO.logErrorCause(s"DIDComm communication error processing record: ${record.id}", Cause.fail(ex))
@@ -373,6 +384,7 @@ object BackgroundJobs {
       .catchAllDefect { case throwable =>
         ZIO.logErrorCause(s"Issue Credential protocol defect processing record: ${record.id}", Cause.fail(throwable))
       }
+
   }
 
   // TODO: Improvements needed here:
