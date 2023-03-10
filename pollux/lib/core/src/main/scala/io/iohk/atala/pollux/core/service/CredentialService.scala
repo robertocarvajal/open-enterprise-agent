@@ -97,7 +97,7 @@ trait CredentialService {
       record: IssueCredentialRecord,
       issuer: Issuer,
       issuanceDate: Instant
-  ): IO[CreateCredentialPayloadFromRecordError, W3cCredentialPayload]
+  ): IO[CredentialServiceError, W3cCredentialPayload]
 
   def publishCredentialBatch(
       credentials: Seq[W3cCredentialPayload],
