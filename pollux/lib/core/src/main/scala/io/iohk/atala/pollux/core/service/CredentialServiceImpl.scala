@@ -51,6 +51,7 @@ import io.iohk.atala.castor.core.model.did.VerificationRelationship
 import io.iohk.atala.pollux.vc.jwt.CredentialVerification
 import java.time.ZoneId
 import com.squareup.okhttp.Protocol
+import io.iohk.atala.pollux.core.model.presentation.Jwt
 
 object CredentialServiceImpl {
   val layer: URLayer[IrisServiceStub & CredentialRepository[Task] & DidResolver, CredentialService] =
@@ -472,7 +473,7 @@ private class CredentialServiceImpl(
         AttachmentDescriptor.buildJsonAttachment(
           payload = PresentationAttachment(
             Some(Options(challenge, domain)),
-            PresentationDefinition(format = Some(ClaimFormat(ldp = Some(Ldp(Seq("EcdsaSecp256k1Signature2019"))))))
+            PresentationDefinition(format = Some(ClaimFormat(jwt = Some(Jwt(alg = Seq("ES256K"), proof_type = Nil)))))
           )
         )
       ),
