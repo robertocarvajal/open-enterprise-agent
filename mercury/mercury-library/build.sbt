@@ -12,7 +12,7 @@ inThisBuild(
   )
 )
 
-coverageDataDir := target.value / "coverage"
+// coverageDataDir := target.value / "coverage"
 
 SbtUtils.disablePlugins(publishConfigure) // SEE also SbtUtils.scala
 lazy val publishConfigure: Project => Project = sys.env

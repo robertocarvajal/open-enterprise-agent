@@ -16,6 +16,8 @@ inThisBuild(
 )
 
 coverageDataDir := target.value / "coverage"
+coverageFailOnMinimum := true
+coverageMinimumStmtTotal := 90
 
 // Project definitions
 lazy val root = project
