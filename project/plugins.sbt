@@ -8,7 +8,7 @@ addSbtPlugin("com.codecommit" % "sbt-github-packages" % "0.5.3")
 // In order to import proper version of com.google.protobuf.ByteString we need to add this dependency
 libraryDependencies ++= Seq("com.thesamet.scalapb" %% "compilerplugin" % "0.11.12")
 
-libraryDependencies ++= Seq("org.openapitools" % "openapi-generator" % "6.0.1")
+libraryDependencies ++= Seq("org.openapitools" % "openapi-generator" % "6.4.0")
 
 // USE> GITHUB_TOKEN=??? SBT_PACKAGER=enable sbt publish
 new sbt.Def.SettingList(

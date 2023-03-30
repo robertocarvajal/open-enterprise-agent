@@ -417,7 +417,7 @@ inThisBuild(
 )
 
 lazy val prismAgentWalletAPI = project
-  .in(file("prism-agent/service/wallet-api"))
+  .in(file("prism-agent/wallet-api"))
   .settings(prismAgentConnectCommonSettings)
   .settings(
     name := "prism-agent-wallet-api",
@@ -426,38 +426,41 @@ lazy val prismAgentWalletAPI = project
   .dependsOn(agentDidcommx)
   .dependsOn(castorCore, castorDoobie)
 
-lazy val prismAgentServer = project
-  .in(file("prism-agent/service/server"))
+lazy val prismAgentStub = project
+  .in(file("prism-agent/openapistub"))
   .settings(prismAgentConnectCommonSettings)
   .settings(
-    name := "prism-agent",
+    name := "prism-agent-openapistub",
     fork := true,
     libraryDependencies ++= PrismAgentDependencies.serverDependencies,
     Compile / mainClass := Some("io.iohk.atala.agent.server.Main"),
     // OpenAPI settings
-    Compile / unmanagedResourceDirectories += baseDirectory.value / ".." / "api",
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "api",
     Compile / sourceGenerators += openApiGenerateClasses,
-    openApiGeneratorSpec := baseDirectory.value / ".." / "api" / "http/prism-agent-openapi-spec.yaml",
-    openApiGeneratorConfig := baseDirectory.value / "openapi/generator-config/config2.yaml",
+    openApiGeneratorSpec := baseDirectory.value / "api" / "http/prism-agent-openapi-spec.yaml",
+    openApiGeneratorConfig := baseDirectory.value / "openapi" / "generator-config/config.yaml",
     openApiGeneratorImportMapping := Seq(
       "DidOperationType",
       "DidOperationStatus"
     )
       .map(model => (model, s"io.iohk.atala.agent.server.http.model.OASModelPatches.$model"))
       .toMap,
-    // FIXME
-    // Docker / maintainer := "atala-coredid@iohk.io",
-    // Docker / dockerUsername := Some("input-output-hk"),
-    // Docker / githubOwner := "atala-prism-building-blocks",
-    // Docker / dockerRepository := Some("ghcr.io"),
-    // dockerExposedPorts := Seq(8080, 8085, 8090),
-    // dockerBaseImage := "openjdk:11"
+  )
+  .enablePlugins(OpenApiGeneratorPlugin)
+
+lazy val prismAgentServer = project
+  .in(file("prism-agent/server"))
+  .settings(prismAgentConnectCommonSettings)
+  .settings(
+    name := "prism-agent",
+    fork := true,
+    libraryDependencies ++= PrismAgentDependencies.serverDependencies,
+    Compile / mainClass := Some("io.iohk.atala.agent.server.Main"),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
     buildInfoPackage := "io.iohk.atala.agent.server.buildinfo"
   )
   // FIXME .enablePlugins(OpenApiGeneratorPlugin, JavaAppPackaging, DockerPlugin)
-  // .enablePlugins(OpenApiGeneratorPlugin)
-  .enablePlugins(OpenApiGeneratorPlugin, BuildInfoPlugin)
+  .enablePlugins(BuildInfoPlugin)
   .dependsOn(prismAgentWalletAPI)
   .dependsOn(
     agent,
@@ -466,5 +469,47 @@ lazy val prismAgentServer = project
     connectCore,
     connectDoobie,
     castorCore,
-    castorDoobie
+    castorDoobie,
+    prismAgentStub,
   )
+
+// lazy val prismAgentServer = project
+//   .in(file("prism-agent/service/server"))
+//   .settings(prismAgentConnectCommonSettings)
+//   .settings(
+//     name := "prism-agent",
+//     fork := true,
+//     libraryDependencies ++= PrismAgentDependencies.serverDependencies,
+//     Compile / mainClass := Some("io.iohk.atala.agent.server.Main"),
+//     // OpenAPI settings
+//     Compile / unmanagedResourceDirectories += baseDirectory.value / ".." / "api",
+//     Compile / sourceGenerators += openApiGenerateClasses,
+//     openApiGeneratorSpec := baseDirectory.value / ".." / "api" / "http/prism-agent-openapi-spec.yaml",
+//     openApiGeneratorConfig := baseDirectory.value / "openapi/generator-config/config2.yaml",
+//     openApiGeneratorImportMapping := Seq(
+//       "DidOperationType",
+//       "DidOperationStatus"
+//     )
+//       .map(model => (model, s"io.iohk.atala.agent.server.http.model.OASModelPatches.$model"))
+//       .toMap,
+//     // Docker / maintainer := "atala-coredid@iohk.io",
+//     // Docker / dockerUsername := Some("input-output-hk"),
+//     // Docker / githubOwner := "atala-prism-building-blocks",
+//     // Docker / dockerRepository := Some("ghcr.io"),
+//     // dockerExposedPorts := Seq(8080, 8085, 8090),
+//     // dockerBaseImage := "openjdk:11"
+//     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+//     buildInfoPackage := "io.iohk.atala.agent.server.buildinfo"
+//   )
+//   // FIXME .enablePlugins(OpenApiGeneratorPlugin, JavaAppPackaging, DockerPlugin)
+//   .enablePlugins(OpenApiGeneratorPlugin, BuildInfoPlugin)
+//   .dependsOn(prismAgentWalletAPI)
+//   .dependsOn(
+//     agent,
+//     polluxCore,
+//     polluxDoobie,
+//     connectCore,
+//     connectDoobie,
+//     castorCore,
+//     castorDoobie
+//   )
