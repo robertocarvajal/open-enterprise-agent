@@ -1,0 +1,21 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  namespace: argocd
+  name: argocd-route
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "-7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true #needed to prevent dry run from failing as crds are in different app https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#skip-dry-run-for-new-custom-resources-types
+spec:
+  http:
+  - name: argocd-route
+    match:
+      hosts:
+      - "argocd.local-prism"
+      paths:
+      - "/*"
+    backends:
+       - serviceName: argocd-server
+         servicePort: 80
