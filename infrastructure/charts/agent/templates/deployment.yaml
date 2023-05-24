@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: "{{ .Release.Namespace }}"
+  name: prism-agent-server
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prism-agent-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prism-agent-server
+    spec:
+      imagePullSecrets:
+      - name: atala-prism-dev-deployments-github-docker-registry-key
+      initContainers:
+      - name: wait-postgress-ready
+        image: busybox
+        command: ['sh', '-c', "until nc -z {{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.{{.Release.Namespace}} 5432; do echo waiting for postgress-operator; sleep 2; done;"]
+      containers:
+      - name: prism-agent-server
+        image: "{{ .Values.prism_agent.image.repository }}/{{ .Values.prism_agent.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.prism_agent.image.pullPolicy }}
+        resources:
+            {{- toYaml .Values.prism_agent.resources | nindent 12 }}
+        ports:
+        - containerPort: 8085
+        - containerPort: 8090
+        env:
+          - name: IRIS_HOST
+            value: iris-server-service.{{.Release.Namespace}}
+          - name: IRIS_PORT
+            value: "8081"
+          - name: CASTOR_DB_HOST
+            value: "{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.{{.Release.Namespace}}"
+          - name: CASTOR_DB_PORT
+            value: "5432"
+          - name: CASTOR_DB_NAME
+            value: castor
+          - name: CASTOR_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: castor-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: CASTOR_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: castor-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: POLLUX_DB_HOST
+            value: "{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.{{.Release.Namespace}}"
+          - name: POLLUX_DB_PORT
+            value: "5432"
+          - name: POLLUX_DB_NAME
+            value: pollux
+          - name: POLLUX_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: pollux-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: POLLUX_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: pollux-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: CONNECT_DB_HOST
+            value: "{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.{{.Release.Namespace}}"
+          - name: CONNECT_DB_PORT
+            value: "5432"
+          - name: CONNECT_DB_NAME
+            value: connect
+          - name: CONNECT_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: connect-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: CONNECT_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: connect-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: AGENT_DB_HOST
+            value: "{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.{{.Release.Namespace}}"
+          - name: AGENT_DB_PORT
+            value: "5432"
+          - name: AGENT_DB_NAME
+            value: agent
+          - name: AGENT_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: agent-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: AGENT_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: agent-admin.{{ .Values.global.managingTeam }}-{{ .Values.global.instancePrefix }}-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: DIDCOMM_SERVICE_URL
+            value: "https://{{ .Values.global.domainNamePrefix }}.atalaprism.io/prism-agent/didcomm"
+          - name: PRISM_NODE_HOST
+            value: prism-node-service.{{.Release.Namespace}}
+          - name: PRISM_NODE_PORT
+            value: "50053"

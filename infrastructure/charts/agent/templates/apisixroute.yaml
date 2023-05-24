@@ -1,0 +1,51 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  namespace: "{{ .Release.Namespace }}"
+  name: prism-agent-server
+spec:
+  http:
+  - name: prism-agent-server
+    match:
+      hosts:
+      - "{{ .Values.global.domainNamePrefix }}.atalaprism.io"
+      paths:
+      - /prism-agent/*
+    backends:
+       - serviceName: prism-agent-server
+         servicePort: 8085
+    authentication:
+      enable: true
+      type: keyAuth
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/(.*)","/$1"]
+    {{ template "cors" . }}
+    {{ template "consumer-restriction" . }}
+
+---
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  namespace: "{{ .Release.Namespace }}"
+  name: prism-agent-server-didcomm
+spec:
+  http:
+  - name: prism-agent-server-didcomm
+    match:
+      hosts:
+      - "{{ .Values.global.domainNamePrefix }}.atalaprism.io"
+      paths:
+      - /prism-agent/didcomm*
+    backends:
+       - serviceName: prism-agent-server-didcomm
+         servicePort: 8090
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/didcomm(.*)", "/$1"]
+    {{ template "cors" . }}

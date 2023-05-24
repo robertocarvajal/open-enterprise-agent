@@ -1,0 +1,13 @@
+{{- $root := . -}}
+{{- range $consumer := .Values.consumers }}
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: "{{ $consumer | lower }}"
+spec:
+  authParameter:
+    keyAuth:
+      secretRef:
+        name: "{{ $root.Values.keyPrefix }}-{{ $consumer | lower }}"
+---
+{{- end }}

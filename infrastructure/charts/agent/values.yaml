@@ -1,0 +1,189 @@
+# server:
+#   instanceName: d-agent-prism-local
+#   rootUrl: agent.prism-local
+#   container:
+#     image:
+#       repository: ghcr.io
+#       pullPolicy: IfNotPresent
+#       tag: input-output-hk/prism-agent:0.56.0
+#     resources:
+#       limits:
+#         cpu: 500m
+#         memory: 1024Mi
+#       requests:
+#         cpu: 250m
+#         memory: 512Mi
+
+# secrets:
+#   provider: externalSecrets
+#   externalSecrets:
+#     secretStore: prism-v2-dev-us-east-1-externalsecrets
+#     keyPrefix: dev-api-key
+#     dockerRegistryToken: dev-argocd-github-docker-registry-token
+
+# persistence:
+#   provider: postgres-operator
+#   postgres:
+#     managingTeam: atala
+#     databaseSize: 4Gi
+
+# ingress:
+#   enabled: true
+#   root_url:
+#   provider: apisix
+#   apisix:
+#     security:
+#       cors:
+#         enabled: true
+#         allow_origins: "*"
+#     consumers: [ ]
+
+# vdr:
+#   provider: atala
+#   atala:
+#     cardanoNode: atala-cardano-dev-preprod
+#     cardanoNamespace: cardano-stack
+#     cardanoWallet: dev-k8s-cardano-wallet
+
+# mediator:
+#   provider: atala
+#   atala:
+#     uri:
+
+
+global:
+  version: 0.1.0
+  instancePrefix: base-prism
+  domainNamePrefix: k8s-base
+  managingTeam: atala
+  databaseSize: 4Gi
+  cardanoNode: atala-cardano-dev-preprod
+  cardanoNamespace: cardano-stack
+  cardanoWallet: dev-k8s-cardano-wallet
+
+cors:
+  enabled: true
+  allow_origins: "*"
+
+secretStore: prism-v2-dev-us-east-1-externalsecrets
+keyPrefix: dev-api-key
+dockerRegistryToken: dev-argocd-github-docker-registry-token
+
+consumers: []
+
+prism_agent:
+  enabled: true
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/prism-agent:0.56.0
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+mercury_mediator:
+  enabled: false
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/mercury-mediator:0.2.0
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+swagger_ui:
+  enabled: true
+  image:
+    repository: swaggerapi
+    pullPolicy: IfNotPresent
+    tag: "swagger-ui:v4.14.0"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+iris_service:
+  enabled: false
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/iris-service:0.1.0
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+prism_node:
+  enabled: true
+  ledger: "in-memory"
+  genesisBlock: 424661
+  moveScheduledToPendingPeriod: 3s
+  refereshAndSubmitPeriod: 3s
+  confirmationBlocks: 1
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/prism-node:v2.1.1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+prism_enterprise_services:
+  enabled: true
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/prism-enterprise-services:0.7.4
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+prism_enterprise_services_swagger:
+  enabled: true
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/prism-enterprise-services-swagger:0.7.1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+prism_manage_frontend:
+  enabled: true
+  image:
+    repository: ghcr.io
+    pullPolicy: IfNotPresent
+    tag: input-output-hk/prism-manage-frontend:0.1.3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
