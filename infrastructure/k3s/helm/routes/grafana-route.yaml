@@ -10,7 +10,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true #needed to prevent dry run from failing as crds are in different app https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#skip-dry-run-for-new-custom-resources-types
 spec:
   http:
-  - name: grafana-route
+  - name: grafana
     match:
       hosts:
       - "grafana.local-prism"

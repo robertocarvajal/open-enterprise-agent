@@ -14,3 +14,9 @@ spec:
   repo: https://dl.gitea.io/charts/
   chart: gitea
   targetNamespace: gitea
+  valuesContent: |-
+    gitea:
+      admin:
+        username: "local-prism"
+        password: "atala"
+        email: "git@atalaprism.io"

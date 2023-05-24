@@ -106,6 +106,8 @@ echo "--------------------------------------"
 
 k3s kubectl apply --filename helm/routes/argocd-route.yaml
 k3s kubectl apply --filename helm/routes/grafana-route.yaml
+k3s kubectl apply --filename helm/routes/gitea-route.yaml
+
 
 echo "--------------------------------------"
 echo "argocd access credentials"

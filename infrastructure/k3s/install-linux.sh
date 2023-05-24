@@ -21,6 +21,10 @@ while ! k3s kubectl wait --namespace kube-system --for=condition=Ready --timeout
     sleep 5
   done
 
+# 127.0.0.1  grafana.local-prism                                                                                                                                                              │
+# 127.0.0.1  argocd.local-prism                                                                                                                                                               │
+# 127.0.0.1  gitea.local-prism
+
 # (jq -c . < ~/.docker/config.json | base64 -w 0)
 # jq -c . < ~/.docker/config.json | base64 -w 0 | xclip -selection clipboard
 # base64 prism-agent-1.1.0.tgz -w 0 | xclip -selection clipboard

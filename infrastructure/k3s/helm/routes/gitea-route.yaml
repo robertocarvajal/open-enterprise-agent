@@ -1,8 +1,8 @@
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: argocd
-  name: argocd-route
+  namespace: gitea
+  name: gitea-route
   finalizers:
   - resources-finalizer.argocd.argoproj.io
   annotations:
@@ -10,12 +10,12 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true #needed to prevent dry run from failing as crds are in different app https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#skip-dry-run-for-new-custom-resources-types
 spec:
   http:
-  - name: argocd
+  - name: gitea
     match:
       hosts:
-      - "argocd.local-prism"
+      - "gitea.local-prism"
       paths:
       - "/*"
     backends:
-       - serviceName: argocd-server
-         servicePort: 80
+       - serviceName: gitea-http
+         servicePort: 3000
