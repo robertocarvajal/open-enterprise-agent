@@ -15,8 +15,8 @@ echo "--------------------------------------"
 
 # Note - cannot apply to a directory as ordering of helm-charts matters
 
-# # Local Git Serverr for managing state
-kubectl apply --filename helm/gitea.yaml
+# Local Git Serverr for managing state
+# kubectl apply --filename helm/gitea.yaml 
 
 echo "--------------------------------------"
 echo "deploying argo-cd via helm"
@@ -40,7 +40,7 @@ echo "--------------------------------------"
 echo "argocd access credentials"
 echo "username: admin"
 echo "password: ${ARGOCD_PASSWORD}"
-echo "http://localhost/argocd/"
+echo "http://argocd.local-prism"
 echo "--------------------------------------"
 
 echo "--------------------------------------"
