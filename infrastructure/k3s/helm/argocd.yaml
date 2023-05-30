@@ -23,8 +23,10 @@ spec:
         ssh-creds:
           url: git@github.com:input-output-hk
           sshPrivateKey: |
-            #ENTER PRIVATE KEY HERE
+
     server:
+      service:
+        type: NodePort
       config:
         resource.customizations: |
           argoproj.io/Application:
