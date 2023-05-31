@@ -92,10 +92,12 @@ echo "http://localhost:30443"
 echo "--------------------------------------"
 
 echo "--------------------------------------"
-echo "setting up ArgoCD git hub repository"
+echo "creating kubernetres secret for github ssh key"
 echo "--------------------------------------"
 
-${KUBECTLCOMMAND} apply --filename helm/root-prism-platform-repo-secret.yaml
+PRIVATE_KEYFILE=$(sk --header="Select your private key file for github - searching in ~/.ssh" -c "ls ~/.ssh/")
+cp ~/.ssh/${PRIVATE_KEYFILE} ${SCRIPT_DIR}/helm/repo-secret/sshPrivateKey
+${KUBECTLCOMMAND} kustomize ${SCRIPT_DIR}/helm/repo-secret/ | ${KUBECTLCOMMAND} apply --filename -
 
 echo "--------------------------------------"
 echo "checking ArgoCD github repo status"
@@ -128,10 +130,15 @@ echo "--------------------------------------"
 echo "waiting for external-secrets"
 echo "--------------------------------------"
 
+# Future improvement - check ArgoCD health directly with following:
+# For now - checking that a pod in each deployment is in ready state is good enough
+# ES_ARGOCD_STATUS=$(argocd app list -o json | jq -r -c '.[] | select(.metadata.name | contains("external-secrets")) | .status.health.status')
+
 while ! ${KUBECTLCOMMAND} wait --namespace external-secrets --for=condition=Ready --timeout=-1s pod -l "app.kubernetes.io/name=external-secrets"; do
 	echo "Resources do not exist yet and cannot use ${KUBECTLCOMMAND} wait command, sleeping 5 seconds"
 	sleep 5
 done
+
 
 echo "--------------------------------------"
 echo "waiting for apisix"
@@ -175,7 +182,8 @@ echo "--------------------------------------"
 
 ${KUBECTLCOMMAND} apply --filename helm/routes/argocd-route.yaml
 ${KUBECTLCOMMAND} apply --filename helm/routes/grafana-route.yaml
-${KUBECTLCOMMAND} apply --filename helm/routes/gitea-route.yaml
+# Disable gitea route as currently not deployed in script
+# ${KUBECTLCOMMAND} apply --filename helm/routes/gitea-route.yaml
 
 echo "--------------------------------------"
 echo "argocd access credentials"

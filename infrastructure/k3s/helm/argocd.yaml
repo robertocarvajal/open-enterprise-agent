@@ -19,11 +19,6 @@ spec:
     configs:
       params:
         server.insecure: true
-      credentialTemplates:
-        ssh-creds:
-          url: git@github.com:input-output-hk
-          sshPrivateKey: |
-
     server:
       service:
         type: NodePort
