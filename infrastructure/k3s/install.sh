@@ -24,6 +24,13 @@ install_common() {
 		brew install argocd
 		exit
 	fi
+
+	# test if sk is installed via brew
+	if ! brew list sk &>/dev/null; then
+		echo "sk not installed, installing sk"
+		brew install sk
+		exit
+	fi
 }
 
 install_linux() {
@@ -58,10 +65,12 @@ install_mac() {
 	# test if k3d has a cluster called local-cluster
 	if k3d cluster list | grep -q local-cluster; then
 		echo "local-cluster exists, continuing"
+		echo "ensure local-cluster is started"
+		k3d cluster start local-cluster
 	else
 		echo "local-cluster does not exist, creating local-cluster"
+		k3d cluster create local-cluster --k3s-arg="--disable=traefik@server:0" -p "30443:30443@server:0" -p "30080:30080@server:0"
 		k3d kubeconfig merge local-cluster --kubeconfig-switch-context
-		k3d cluster create local-cluster --k3s-arg="--disable=traefik@server:0"
 	fi
 
 }
