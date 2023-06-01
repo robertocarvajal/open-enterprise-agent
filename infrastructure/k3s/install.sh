@@ -69,7 +69,7 @@ install_mac() {
 		k3d cluster start local-cluster
 	else
 		echo "local-cluster does not exist, creating local-cluster"
-		k3d cluster create local-cluster --k3s-arg="--disable=traefik@server:0" -p "30443:30443@server:0" -p "30080:30080@server:0"
+		k3d cluster create local-cluster --k3s-arg="--disable=traefik@server:0" -p "30443:30443@server:0" -p "30080:30080@server:0" -p "80:80@loadbalancer"
 		k3d kubeconfig merge local-cluster --kubeconfig-switch-context
 	fi
 

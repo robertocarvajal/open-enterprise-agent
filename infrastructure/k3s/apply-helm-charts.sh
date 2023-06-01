@@ -96,8 +96,12 @@ echo "creating kubernetres secret for github ssh key"
 echo "--------------------------------------"
 
 PRIVATE_KEYFILE=$(sk --header="Select your private key file for github - searching in ~/.ssh" -c "ls ~/.ssh/")
-cp ~/.ssh/${PRIVATE_KEYFILE} ${SCRIPT_DIR}/helm/repo-secret/sshPrivateKey
-${KUBECTLCOMMAND} kustomize ${SCRIPT_DIR}/helm/repo-secret/ | ${KUBECTLCOMMAND} apply --filename -
+cp ~/.ssh/${PRIVATE_KEYFILE} ${SCRIPT_DIR}/helm/repo-secret-dev-deployments/sshPrivateKey
+cp ~/.ssh/${PRIVATE_KEYFILE} ${SCRIPT_DIR}/helm/repo-secret-helm-charts/sshPrivateKey
+${KUBECTLCOMMAND} kustomize ${SCRIPT_DIR}/helm/repo-secret-dev-deployments/ | ${KUBECTLCOMMAND} apply --filename -
+${KUBECTLCOMMAND} kustomize ${SCRIPT_DIR}/helm/repo-secret-helm-charts/ | ${KUBECTLCOMMAND} apply --filename -
+rm ${SCRIPT_DIR}/helm/repo-secret-dev-deployments/sshPrivateKey
+rm ${SCRIPT_DIR}/helm/repo-secret-helm-charts/sshPrivateKey
 
 echo "--------------------------------------"
 echo "checking ArgoCD github repo status"

@@ -1,12 +1,12 @@
 secretGenerator:
-- name: helm-chart-repo
+- name: helm-chart-repo-dev-deployments
   namespace: argocd
   files:
   - sshPrivateKey
   literals:
   - type=git
   - project=default
-  - url="git@github.com:input-output-hk/atala-prism-helm-charts.git"
+  - url="git@github.com:input-output-hk/atala-prism-dev-deployments.git"
   options:
     labels:
       argocd.argoproj.io/secret-type: repository
