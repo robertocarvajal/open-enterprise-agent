@@ -22,14 +22,12 @@ install_common() {
 	if ! brew list argocd &>/dev/null; then
 		echo "argocd not installed, installing argocd"
 		brew install argocd
-		exit
 	fi
 
 	# test if sk is installed via brew
 	if ! brew list sk &>/dev/null; then
 		echo "sk not installed, installing sk"
 		brew install sk
-		exit
 	fi
 }
 
@@ -58,7 +56,6 @@ install_mac() {
 	if ! command -v k3d &>/dev/null; then
 		echo "k3d not installed, installing k3d"
 		brew install k3d@5.5.1
-		exit
 	fi
 	KUBECTLCOMMAND="kubectl"
 
