@@ -1,7 +1,6 @@
 package io.iohk.atala.pollux.core.service
 
 import com.google.protobuf.ByteString
-import com.squareup.okhttp.Protocol
 import io.circe.Json
 import io.circe.syntax.*
 import io.iohk.atala.castor.core.model.did.{CanonicalPrismDID, PrismDID, VerificationRelationship}
@@ -15,43 +14,58 @@ import io.iohk.atala.pollux.core.model.*
 import io.iohk.atala.pollux.core.model.error.CredentialServiceError
 import io.iohk.atala.pollux.core.model.error.CredentialServiceError.*
 import io.iohk.atala.pollux.core.model.presentation.*
+import io.iohk.atala.pollux.core.model.schema.CredentialSchema
 import io.iohk.atala.pollux.core.repository.CredentialRepository
 import io.iohk.atala.pollux.vc.jwt.*
 import io.iohk.atala.prism.crypto.{MerkleInclusionProof, MerkleTreeKt, Sha256}
-import io.iohk.atala.resolvers.DidValidator
 import zio.*
 import zio.prelude.ZValidation
 
 import java.rmi.UnexpectedException
-import java.security.spec.ECGenParameterSpec
-import java.security.{KeyPairGenerator, SecureRandom}
 import java.time.{Instant, ZoneId}
 import java.util.UUID
 
 object CredentialServiceImpl {
-  val layer: URLayer[IrisServiceStub & CredentialRepository[Task] & DidResolver, CredentialService] =
-    ZLayer.fromFunction(CredentialServiceImpl(_, _, _))
+  val layer: URLayer[IrisServiceStub & CredentialRepository[Task] & DidResolver & URIDereferencer, CredentialService] =
+    ZLayer.fromFunction(CredentialServiceImpl(_, _, _, _))
+
+//  private val VC_JSON_SCHEMA_URI = "https://w3c-ccg.github.io/vc-json-schemas/schema/2.0/schema.json"
+  private val VC_JSON_SCHEMA_TYPE = "CredentialSchema2022"
 }
 
 private class CredentialServiceImpl(
     irisClient: IrisServiceStub,
     credentialRepository: CredentialRepository[Task],
     didResolver: DidResolver,
+    uriDereferencer: URIDereferencer,
     maxRetries: Int = 5 // TODO move to config
 ) extends CredentialService {
 
+  import CredentialServiceImpl.*
   import IssueCredentialRecord.*
 
   override def extractIdFromCredential(credential: W3cCredentialPayload): Option[DidCommID] =
     credential.maybeId.map(_.split("/").last).map(DidCommID(_))
 
-  override def getIssueCredentialRecords(): IO[CredentialServiceError, Seq[IssueCredentialRecord]] = {
+  override def getIssueCredentialRecords(
+      offset: Option[Int],
+      limit: Option[Int]
+  ): IO[CredentialServiceError, (Seq[IssueCredentialRecord], Int)] = {
     for {
       records <- credentialRepository
-        .getIssueCredentialRecords()
+        .getIssueCredentialRecords(offset = offset, limit = limit)
         .mapError(RepositoryError.apply)
     } yield records
   }
+
+  override def getIssueCredentialRecordByThreadId(
+      thid: DidCommID
+  ): IO[CredentialServiceError, Option[IssueCredentialRecord]] =
+    for {
+      record <- credentialRepository
+        .getIssueCredentialRecordByThreadId(thid)
+        .mapError(RepositoryError.apply)
+    } yield record
 
   override def getIssueCredentialRecord(
       recordId: DidCommID
@@ -67,21 +81,30 @@ private class CredentialServiceImpl(
       pairwiseIssuerDID: DidId,
       pairwiseHolderDID: DidId,
       thid: DidCommID,
-      schemaId: Option[String],
-      claims: Map[String, String],
+      maybeSchemaId: Option[String],
+      claims: Json,
       validityPeriod: Option[Double],
       automaticIssuance: Option[Boolean],
       awaitConfirmation: Option[Boolean],
       issuingDID: Option[CanonicalPrismDID]
   ): IO[CredentialServiceError, IssueCredentialRecord] = {
     for {
+      _ <- maybeSchemaId match
+        case Some(schemaId) =>
+          CredentialSchema
+            .validateClaims(schemaId, claims.noSpaces, uriDereferencer)
+            .mapError(e => CredentialSchemaError(e))
+        case None =>
+          ZIO.unit
+      attributes <- CredentialService.convertJsonClaimsToAttributes(claims)
       offer <- ZIO.succeed(
         createDidCommOfferCredential(
           pairwiseIssuerDID = pairwiseIssuerDID,
           pairwiseHolderDID = pairwiseHolderDID,
-          claims = claims,
+          schemaId = maybeSchemaId,
+          claims = attributes,
           thid = thid,
-          UUID.randomUUID().toString(),
+          UUID.randomUUID().toString,
           "domain"
         )
       )
@@ -91,7 +114,7 @@ private class CredentialServiceImpl(
           createdAt = Instant.now,
           updatedAt = None,
           thid = thid,
-          schemaId = schemaId,
+          schemaId = maybeSchemaId,
           role = IssueCredentialRecord.Role.Issuer,
           subjectId = None,
           validityPeriod = validityPeriod,
@@ -449,13 +472,13 @@ private class CredentialServiceImpl(
   private[this] def createDidCommOfferCredential(
       pairwiseIssuerDID: DidId,
       pairwiseHolderDID: DidId,
-      claims: Map[String, String],
+      schemaId: Option[String],
+      claims: Seq[Attribute],
       thid: DidCommID,
       challenge: String,
       domain: String
   ): OfferCredential = {
-    val attributes = claims.map { case (k, v) => Attribute(k, v) }
-    val credentialPreview = CredentialPreview(attributes = attributes.toSeq)
+    val credentialPreview = CredentialPreview(schema_id = schemaId, attributes = claims)
     val body = OfferCredential.Body(goal_code = Some("Offer Credential"), credential_preview = credentialPreview)
 
     OfferCredential(
@@ -626,14 +649,16 @@ private class CredentialServiceImpl(
       issuer: Issuer,
       issuanceDate: Instant
   ): IO[CredentialServiceError, W3cCredentialPayload] = {
-
-    val claims = for {
-      offerCredentialData <- record.offerCredentialData
-      preview = offerCredentialData.body.credential_preview
-      claims = preview.attributes.map(attr => attr.name -> attr.value).toMap
-    } yield claims
-
     val credential = for {
+      offerCredentialData <- ZIO
+        .fromOption(record.offerCredentialData)
+        .mapError(_ =>
+          CredentialServiceError.CreateCredentialPayloadFromRecordError(
+            new Throwable("Could not extract claims from \"requestCredential\" DIDComm message")
+          )
+        )
+      preview = offerCredentialData.body.credential_preview
+      claims <- CredentialService.convertAttributesToJsonClaims(preview.attributes)
       maybeOfferOptions <- getOptionsFromOfferCredentialData(record)
       requestJwt <- getJwtFromRequestCredentialData(record)
 
@@ -649,16 +674,6 @@ private class CredentialServiceImpl(
             .mapError(t => RepositoryError(t)),
         payload => ZIO.logInfo("JWT Presentation Validation Successful!")
       )
-
-      claims <- ZIO.fromEither(
-        Either.cond(
-          claims.isDefined,
-          claims.get,
-          CredentialServiceError.CreateCredentialPayloadFromRecordError(
-            new Throwable("Could not extract claims from \"requestCredential\" DIDComm message")
-          )
-        )
-      )
       // TODO: get schema when schema registry is available if schema ID is provided
       credential = W3cCredentialPayload(
         `@context` = Set(
@@ -670,8 +685,9 @@ private class CredentialServiceImpl(
         issuer = issuer.did,
         issuanceDate = issuanceDate,
         maybeExpirationDate = record.validityPeriod.map(sec => issuanceDate.plusSeconds(sec.toLong)),
-        maybeCredentialSchema = None,
-        credentialSubject = claims.updated("id", jwtPresentation.iss).asJson,
+        maybeCredentialSchema =
+          record.schemaId.map(id => io.iohk.atala.pollux.vc.jwt.CredentialSchema(id, VC_JSON_SCHEMA_TYPE)),
+        credentialSubject = claims.add("id", jwtPresentation.iss.asJson).asJson,
         maybeCredentialStatus = None,
         maybeRefreshService = None,
         maybeEvidence = None,

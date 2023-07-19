@@ -1,12 +1,14 @@
 package io.iohk.atala.agent.server.jobs
 
 import cats.syntax.all.*
-import com.ionspin.kotlin.bignum.integer.{BigInteger, Sign}
-import io.circe.Json
 import io.circe.parser.*
 import io.circe.syntax.*
 import io.iohk.atala.agent.server.config.AppConfig
-import io.iohk.atala.agent.server.http.model.{InvalidState, NotImplemented}
+import io.iohk.atala.agent.server.jobs.BackgroundJobError.{
+  ErrorResponseReceivedFromPeerAgent,
+  InvalidState,
+  NotImplemented
+}
 import io.iohk.atala.agent.walletapi.model.*
 import io.iohk.atala.agent.walletapi.model.error.*
 import io.iohk.atala.agent.walletapi.model.error.DIDSecretStorageError.KeyNotFoundError
@@ -15,7 +17,6 @@ import io.iohk.atala.castor.core.model.did.*
 import io.iohk.atala.castor.core.service.DIDService
 import io.iohk.atala.mercury.*
 import io.iohk.atala.mercury.model.*
-import io.iohk.atala.mercury.model.error.*
 import io.iohk.atala.mercury.protocol.issuecredential.*
 import io.iohk.atala.mercury.protocol.presentproof.*
 import io.iohk.atala.mercury.protocol.reportproblem.v2.*
@@ -24,30 +25,17 @@ import io.iohk.atala.pollux.core.model.error.PresentationError.*
 import io.iohk.atala.pollux.core.model.error.{CredentialServiceError, PresentationError}
 import io.iohk.atala.pollux.core.service.{CredentialService, PresentationService}
 import io.iohk.atala.pollux.vc.jwt.{
-  CredentialVerification,
   ES256KSigner,
   JWT,
   JwtPresentation,
   W3CCredential,
-  W3cCredentialPayload,
   DidResolver as JwtDidResolver,
   Issuer as JwtIssuer
 }
-import io.iohk.atala.resolvers.{DIDResolver, UniversalDidResolver}
-import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.jce.spec.ECNamedCurveSpec
-import org.didcommx.didcomm.DIDComm
 import zio.*
 import zio.prelude.ZValidation.*
-import zio.prelude.{AssociativeBothOps, Validation}
-
-import java.io.IOException
-import java.security.KeyFactory
-import java.security.spec.{ECPoint, ECPrivateKeySpec, ECPublicKeySpec, EncodedKeySpec}
+import zio.prelude.Validation
 import java.time.{Clock, Instant, ZoneId}
-import java.util.UUID
-import scala.jdk.CollectionConverters.*
 
 object BackgroundJobs {
 
@@ -131,7 +119,7 @@ object BackgroundJobs {
             credentialService <- ZIO.service[CredentialService]
             _ <- {
               if (resp.status >= 200 && resp.status < 300) credentialService.markOfferSent(id)
-              else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+              else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
             }
           } yield ()
 
@@ -201,7 +189,7 @@ object BackgroundJobs {
             credentialService <- ZIO.service[CredentialService]
             _ <- {
               if (resp.status >= 200 && resp.status < 300) credentialService.markRequestSent(id)
-              else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+              else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
             }
           } yield ()
 
@@ -310,7 +298,7 @@ object BackgroundJobs {
             credentialService <- ZIO.service[CredentialService]
             _ <- {
               if (resp.status >= 200 && resp.status < 300) credentialService.markCredentialSent(id)
-              else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+              else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
             }
           } yield ()
 
@@ -343,7 +331,7 @@ object BackgroundJobs {
             credentialService <- ZIO.service[CredentialService]
             _ <- {
               if (resp.status >= 200 && resp.status < 300) credentialService.markCredentialSent(id)
-              else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+              else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
             }
           } yield ()
 
@@ -385,7 +373,7 @@ object BackgroundJobs {
         .mapError(e => RuntimeException(s"Error occurred while getting did from wallet: ${e.toString}"))
         .someOrFail(RuntimeException(s"Issuer DID does not exist in the wallet: $did"))
         .flatMap {
-          case s: ManagedDIDState.Published => ZIO.succeed(s)
+          case s @ ManagedDIDState(_, _, PublicationState.Published(_)) => ZIO.succeed(s)
           case s => ZIO.cond(allowUnpublishedIssuingDID, s, RuntimeException(s"Issuer DID must be published: $did"))
         }
       longFormPrismDID = PrismDID.buildLongFormFromOperation(didState.createOperation)
@@ -489,7 +477,7 @@ object BackgroundJobs {
                 service <- ZIO.service[PresentationService]
                 _ <- {
                   if (resp.status >= 200 && resp.status < 300) service.markRequestPresentationSent(id)
-                  else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+                  else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
                 }
               } yield ()
 
@@ -575,7 +563,7 @@ object BackgroundJobs {
                 service <- ZIO.service[PresentationService]
                 _ <- {
                   if (resp.status >= 200 && resp.status < 300) service.markPresentationSent(id)
-                  else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+                  else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
                 }
               } yield ()
         case PresentationRecord(id, _, _, _, _, _, _, _, PresentationSent, _, _, _, _, _, _, _) =>

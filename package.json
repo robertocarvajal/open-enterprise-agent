@@ -1,6 +1,6 @@
 {
   "name": "atala-prism-building-blocks",
-  "version": "1.3.0",
+  "version": "1.7.0",
   "engines": {
     "node": ">=16.13.0"
   },
@@ -41,7 +41,13 @@
       [
         "@semantic-release/exec",
         {
-          "prepareCmd": "sbt dumpLicenseReportAggregate && cp ./target/license-reports/atala-prism-building-blocks-licenses.md ./LICENSES.md"
+          "prepareCmd": "sbt dumpLicenseReportAggregate && cp ./target/license-reports/root-licenses.md ./DEPENDENCIES.md"
+        }
+      ],
+      [
+        "@semantic-release/exec",
+        {
+          "prepareCmd": "sbt \"prismAgentServer/test:runMain io.iohk.atala.api.util.Tapir2StaticOAS ${process.env.PWD}/prism-agent/service/api/http/prism-agent-openapi-spec.yaml ${nextRelease.version}\""
         }
       ],
       [
@@ -68,9 +74,10 @@
           "assets": [
             "version.sbt",
             "CHANGELOG.md",
-            "LICENSES.md",
+            "DEPENDENCIES.md",
             "package.json",
-            "package-lock.json"
+            "package-lock.json",
+            "prism-agent/service/api/http/prism-agent-openapi-spec.yaml"
           ],
           "message": "chore(release): cut atala prism ${nextRelease.version} release\n\n${nextRelease.notes}"
         }

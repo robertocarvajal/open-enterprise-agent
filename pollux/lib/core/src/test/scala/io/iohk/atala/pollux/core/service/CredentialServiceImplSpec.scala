@@ -1,62 +1,41 @@
 package io.iohk.atala.pollux.core.service
 
-import cats.syntax.validated
-import io.circe.parser.decode
-import io.circe.syntax._
-import io.grpc.ManagedChannelBuilder
-import io.iohk.atala.iris.proto.service.IrisServiceGrpc
-import io.iohk.atala.mercury.model.DidId
-import io.iohk.atala.mercury.model.Message
-import io.iohk.atala.mercury.protocol.issuecredential.Attribute
-import io.iohk.atala.mercury.protocol.issuecredential.CredentialPreview
-import io.iohk.atala.mercury.protocol.issuecredential.IssueCredential
-import io.iohk.atala.mercury.protocol.issuecredential.OfferCredential
-import io.iohk.atala.mercury.protocol.issuecredential.RequestCredential
-import io.iohk.atala.pollux.core.model._
-import io.iohk.atala.pollux.core.model.IssueCredentialRecord._
+import io.circe.Json
+import io.circe.syntax.*
+import io.iohk.atala.castor.core.model.did.CanonicalPrismDID
+import io.iohk.atala.mercury.model.{DidId, Message}
+import io.iohk.atala.mercury.protocol.issuecredential.*
+import io.iohk.atala.pollux.core.model.*
+import io.iohk.atala.pollux.core.model.IssueCredentialRecord.*
 import io.iohk.atala.pollux.core.model.error.CredentialServiceError
-import io.iohk.atala.pollux.core.model.error.CredentialServiceError._
-import io.iohk.atala.pollux.core.repository.CredentialRepositoryInMemory
+import io.iohk.atala.pollux.core.model.error.CredentialServiceError.*
+import io.iohk.atala.pollux.vc.jwt.*
 import zio.*
 import zio.test.*
 
-import java.util.UUID
-import io.iohk.atala.castor.core.model.did.CanonicalPrismDID
-import io.iohk.atala.mercury.model.AttachmentDescriptor
-import io.iohk.atala.pollux.core.model.presentation.Options
-import io.iohk.atala.pollux.core.model.presentation.Ldp
-import io.iohk.atala.pollux.core.model.presentation.ClaimFormat
-import io.iohk.atala.pollux.core.model.presentation.PresentationDefinition
-import io.iohk.atala.pollux.vc.jwt._
+import java.nio.charset.StandardCharsets
+import java.util.{Base64, UUID}
 
-object CredentialServiceImplSpec extends ZIOSpecDefault {
-
-  val irisStubLayer = ZLayer.fromZIO(
-    ZIO.succeed(IrisServiceGrpc.stub(ManagedChannelBuilder.forAddress("localhost", 9999).usePlaintext.build))
-  )
-  val didResolverLayer = ZLayer.fromZIO(ZIO.succeed(makeResolver(Map.empty)))
-  val credentialServiceLayer =
-    irisStubLayer ++ CredentialRepositoryInMemory.layer ++ didResolverLayer >>> CredentialServiceImpl.layer
+object CredentialServiceImplSpec extends ZIOSpecDefault with CredentialServiceSpecHelper {
 
   override def spec = {
     suite("CredentialServiceImpl")(
-      test("createIssuerCredentialRecord creates a valid issuer credential record") {
+      test("createIssuerCredentialRecord without schema creates a valid issuer credential record") {
         check(
-          Gen.uuid.map(e => DidCommID(e.toString())),
-          Gen.option(Gen.string),
           Gen.option(Gen.double),
           Gen.option(Gen.boolean),
           Gen.option(Gen.boolean)
-        ) { (thid, schemaId, validityPeriod, automaticIssuance, awaitConfirmation) =>
+        ) { (validityPeriod, automaticIssuance, awaitConfirmation) =>
           for {
             svc <- ZIO.service[CredentialService]
             pairwiseIssuerDid = DidId("did:peer:INVITER")
             pairwiseHolderDid = DidId("did:peer:HOLDER")
+            thid = DidCommID(UUID.randomUUID().toString())
             record <- svc.createRecord(
               thid = thid,
               pairwiseIssuerDID = pairwiseIssuerDid,
               pairwiseHolderDID = pairwiseHolderDid,
-              schemaId = schemaId,
+              schemaId = None,
               validityPeriod = validityPeriod,
               automaticIssuance = automaticIssuance,
               awaitConfirmation = awaitConfirmation
@@ -64,7 +43,7 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           } yield {
             assertTrue(record.thid == thid) &&
             assertTrue(record.updatedAt.isEmpty) &&
-            assertTrue(record.schemaId == schemaId) &&
+            assertTrue(record.schemaId.isEmpty) &&
             assertTrue(record.validityPeriod == validityPeriod) &&
             assertTrue(record.automaticIssuance == automaticIssuance) &&
             assertTrue(record.awaitConfirmation == awaitConfirmation) &&
@@ -84,12 +63,131 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
             assertTrue(record.offerCredentialData.get.body.formats.isEmpty) &&
             assertTrue(
               record.offerCredentialData.get.body.credential_preview.attributes == Seq(
-                Attribute("name", "Alice", None)
+                Attribute("name", "Alice", None),
+                Attribute(
+                  "address",
+                  Base64.getUrlEncoder.encodeToString(
+                    io.circe.parser
+                      .parse("""{"street": "Street Name", "number": "12"}""")
+                      .getOrElse(Json.Null)
+                      .noSpaces
+                      .getBytes(StandardCharsets.UTF_8)
+                  ),
+                  Some("application/json")
+                )
               )
             ) &&
             assertTrue(record.requestCredentialData.isEmpty) &&
             assertTrue(record.issueCredentialData.isEmpty) &&
             assertTrue(record.issuedCredentialRaw.isEmpty)
+          }
+        }
+      },
+      test("createIssuerCredentialRecord with a schema and valid claims creates a valid issuer credential record") {
+        check(
+          Gen.option(Gen.double),
+          Gen.option(Gen.boolean),
+          Gen.option(Gen.boolean)
+        ) { (validityPeriod, automaticIssuance, awaitConfirmation) =>
+          for {
+            svc <- ZIO.service[CredentialService]
+            pairwiseIssuerDid = DidId("did:peer:INVITER")
+            pairwiseHolderDid = DidId("did:peer:HOLDER")
+            claims = io.circe.parser
+              .parse("""
+                |{
+                |   "credentialSubject": {
+                |     "emailAddress": "alice@wonderland.com",
+                |     "givenName": "Alice",
+                |     "familyName": "Wonderland",
+                |     "dateOfIssuance": "2000-01-01T10:00:00Z",
+                |     "drivingLicenseID": "12345",
+                |     "drivingClass": 5
+                |   }
+                |}
+                |""".stripMargin)
+              .getOrElse(Json.Null)
+            thid = DidCommID(UUID.randomUUID().toString())
+            record <- svc.createRecord(
+              thid = thid,
+              pairwiseIssuerDID = pairwiseIssuerDid,
+              pairwiseHolderDID = pairwiseHolderDid,
+              schemaId = Some("resource:///vc-schema-example.json"),
+              claims = claims,
+              validityPeriod = validityPeriod,
+              automaticIssuance = automaticIssuance,
+              awaitConfirmation = awaitConfirmation
+            )
+            attributes <- CredentialService.convertJsonClaimsToAttributes(claims)
+          } yield {
+            assertTrue(record.thid == thid) &&
+            assertTrue(record.updatedAt.isEmpty) &&
+            assertTrue(
+              record.schemaId.contains("resource:///vc-schema-example.json")
+            ) &&
+            assertTrue(record.validityPeriod == validityPeriod) &&
+            assertTrue(record.automaticIssuance == automaticIssuance) &&
+            assertTrue(record.awaitConfirmation == awaitConfirmation) &&
+            assertTrue(record.role == Role.Issuer) &&
+            assertTrue(record.protocolState == ProtocolState.OfferPending) &&
+            assertTrue(record.publicationState.isEmpty) &&
+            assertTrue(record.offerCredentialData.isDefined) &&
+            assertTrue(record.offerCredentialData.get.from == pairwiseIssuerDid) &&
+            assertTrue(record.offerCredentialData.get.to == pairwiseHolderDid) &&
+            // FIXME: update the assertion when when CredentialOffer attachment is realized
+            // assertTrue(record.offerCredentialData.get.attachments.isEmpty) &&
+            assertTrue(record.offerCredentialData.get.thid.contains(thid.toString)) &&
+            assertTrue(record.offerCredentialData.get.body.comment.isEmpty) &&
+            assertTrue(record.offerCredentialData.get.body.goal_code.contains("Offer Credential")) &&
+            assertTrue(record.offerCredentialData.get.body.multiple_available.isEmpty) &&
+            assertTrue(record.offerCredentialData.get.body.replacement_id.isEmpty) &&
+            assertTrue(record.offerCredentialData.get.body.formats.isEmpty) &&
+            assertTrue(record.offerCredentialData.get.body.credential_preview.attributes == attributes) &&
+            assertTrue(record.requestCredentialData.isEmpty) &&
+            assertTrue(record.issueCredentialData.isEmpty) &&
+            assertTrue(record.issuedCredentialRaw.isEmpty)
+          }
+        }
+      },
+      test("createIssuerCredentialRecord with a schema and invalid claims should fail") {
+        check(
+          Gen.option(Gen.double),
+          Gen.option(Gen.boolean),
+          Gen.option(Gen.boolean)
+        ) { (validityPeriod, automaticIssuance, awaitConfirmation) =>
+          for {
+            svc <- ZIO.service[CredentialService]
+            pairwiseIssuerDid = DidId("did:peer:INVITER")
+            pairwiseHolderDid = DidId("did:peer:HOLDER")
+            claims = io.circe.parser
+              .parse(
+                """
+                |{
+                |   "emailAddress": "alice@wonderland.com",
+                |   "givenName": "Alice",
+                |   "familyName": "Wonderland"
+                |}
+                |""".stripMargin
+              )
+              .getOrElse(Json.Null)
+            thid = DidCommID(UUID.randomUUID().toString())
+            record <- svc
+              .createRecord(
+                thid = thid,
+                pairwiseIssuerDID = pairwiseIssuerDid,
+                pairwiseHolderDID = pairwiseHolderDid,
+                schemaId = Some("resource:///vc-schema-example.json"),
+                claims = claims,
+                validityPeriod = validityPeriod,
+                automaticIssuance = automaticIssuance,
+                awaitConfirmation = awaitConfirmation
+              )
+              .exit
+          } yield {
+            assertTrue(record match
+              case Exit.Failure(Cause.Fail(_: CredentialServiceError, _)) => true
+              case _                                                      => false
+            )
           }
         }
       },
@@ -101,8 +199,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           bRecord <- svc.createRecord(thid = thid).exit
         } yield {
           assertTrue(bRecord match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[RepositoryError] => true
-            case _                                                                               => false
+            case Exit.Failure(Cause.Fail(_: RepositoryError, _)) => true
+            case _                                               => false
           )
         }
       },
@@ -111,7 +209,7 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           svc <- ZIO.service[CredentialService]
           aRecord <- svc.createRecord()
           bRecord <- svc.createRecord()
-          records <- svc.getIssueCredentialRecords()
+          records <- svc.getIssueCredentialRecords().map(_._1)
         } yield {
           assertTrue(records.size == 2) &&
           assertTrue(records.contains(aRecord)) &&
@@ -182,8 +280,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- holderSvc.receiveCredentialOffer(offer).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[RepositoryError] => true
-            case _                                                                               => false
+            case Exit.Failure(Cause.Fail(_: RepositoryError, _)) => true
+            case _                                               => false
           )
         }
       },
@@ -224,8 +322,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[InvalidFlowStateError] => true
-            case _                                                                                     => false
+            case Exit.Failure(Cause.Fail(_: InvalidFlowStateError, _)) => true
+            case _                                                     => false
           )
         }
       },
@@ -238,8 +336,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           record <- holderSvc.acceptCredentialOffer(offerReceivedRecord.id, subjectId).exit
         } yield {
           assertTrue(record match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[UnsupportedDidFormat] => true
-            case _                                                                                    => false
+            case Exit.Failure(Cause.Fail(_: UnsupportedDidFormat, _)) => true
+            case _                                                    => false
           )
         }
       },
@@ -265,8 +363,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- issuerSvc.receiveCredentialRequest(request).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[InvalidFlowStateError] => true
-            case _                                                                                     => false
+            case Exit.Failure(Cause.Fail(_: InvalidFlowStateError, _)) => true
+            case _                                                     => false
           )
         }
       },
@@ -279,8 +377,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- issuerSvc.receiveCredentialRequest(request).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[ThreadIdNotFound] => true
-            case _                                                                                => false
+            case Exit.Failure(Cause.Fail(_: ThreadIdNotFound, _)) => true
+            case _                                                => false
           )
         }
       },
@@ -308,8 +406,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- issuerSvc.acceptCredentialRequest(requestReceivedRecord.id).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[InvalidFlowStateError] => true
-            case _                                                                                     => false
+            case Exit.Failure(Cause.Fail(_: InvalidFlowStateError, _)) => true
+            case _                                                     => false
           )
         }
       },
@@ -358,8 +456,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- holderSvc.receiveCredentialIssue(issue).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[InvalidFlowStateError] => true
-            case _                                                                                     => false
+            case Exit.Failure(Cause.Fail(_: InvalidFlowStateError, _)) => true
+            case _                                                     => false
           )
         }
       },
@@ -376,8 +474,8 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
           exit <- holderSvc.receiveCredentialIssue(issue).exit
         } yield {
           assertTrue(exit match
-            case Exit.Failure(cause: Cause.Fail[_]) if cause.value.isInstanceOf[ThreadIdNotFound] => true
-            case _                                                                                => false
+            case Exit.Failure(Cause.Fail(_: ThreadIdNotFound, _)) => true
+            case _                                                => false
           )
         }
       },
@@ -418,81 +516,5 @@ object CredentialServiceImplSpec extends ZIOSpecDefault {
       }
     ).provideLayer(credentialServiceLayer)
   }
-
-  private[this] def offerCredential(
-      thid: Option[UUID] = Some(UUID.randomUUID())
-  ) = OfferCredential(
-    from = DidId("did:prism:issuer"),
-    to = DidId("did:prism:holder"),
-    thid = thid.map(_.toString),
-    attachments = Seq(
-      AttachmentDescriptor.buildJsonAttachment(
-        payload = CredentialOfferAttachment(
-          Options(UUID.randomUUID().toString(), "my-domain"),
-          PresentationDefinition(format = Some(ClaimFormat(ldp = Some(Ldp(Seq("EcdsaSecp256k1Signature2019"))))))
-        )
-      )
-    ),
-    body = OfferCredential.Body(
-      goal_code = Some("Offer Credential"),
-      credential_preview = CredentialPreview(attributes = Seq(Attribute("name", "Alice")))
-    )
-  )
-
-  private[this] def requestCredential(thid: Option[DidCommID] = Some(DidCommID())) = RequestCredential(
-    from = DidId("did:prism:holder"),
-    to = DidId("did:prism:issuer"),
-    thid = thid.map(_.toString),
-    attachments = Nil,
-    body = RequestCredential.Body()
-  )
-
-  private[this] def issueCredential(thid: Option[DidCommID] = Some(DidCommID())) = IssueCredential(
-    from = DidId("did:prism:issuer"),
-    to = DidId("did:prism:holder"),
-    thid = thid.map(_.toString),
-    attachments = Nil,
-    body = IssueCredential.Body()
-  )
-
-  private[this] def makeResolver(lookup: Map[String, DIDDocument]): DidResolver = (didUrl: String) => {
-    lookup
-      .get(didUrl)
-      .fold(
-        ZIO.succeed(DIDResolutionFailed(NotFound(s"DIDDocument not found for $didUrl")))
-      )((didDocument: DIDDocument) => {
-        ZIO.succeed(
-          DIDResolutionSucceeded(
-            didDocument,
-            DIDDocumentMetadata()
-          )
-        )
-      })
-  }
-
-  extension (svc: CredentialService)
-    def createRecord(
-        pairwiseIssuerDID: DidId = DidId("did:prism:issuer"),
-        pairwiseHolderDID: DidId = DidId("did:prism:holder-pairwise"),
-        thid: DidCommID = DidCommID(),
-        schemaId: Option[String] = None,
-        claims: Map[String, String] = Map("name" -> "Alice"),
-        validityPeriod: Option[Double] = None,
-        automaticIssuance: Option[Boolean] = None,
-        awaitConfirmation: Option[Boolean] = None,
-        issuingDID: Option[CanonicalPrismDID] = None
-    ) = {
-      svc.createIssueCredentialRecord(
-        pairwiseIssuerDID = pairwiseIssuerDID,
-        pairwiseHolderDID = pairwiseHolderDID,
-        thid = thid,
-        schemaId = schemaId,
-        claims = claims,
-        validityPeriod = validityPeriod,
-        automaticIssuance = automaticIssuance,
-        awaitConfirmation = awaitConfirmation,
-        issuingDID = issuingDID
-      )
-    }
 
 }

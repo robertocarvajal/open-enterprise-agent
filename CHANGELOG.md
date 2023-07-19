@@ -1,3 +1,66 @@
+# [1.7.0](https://github.com/input-output-hk/atala-prism-building-blocks/compare/prism-agent-v1.6.0...prism-agent-v1.7.0) (2023-07-10)
+
+
+### Bug Fixes
+
+* Adding Apollo ADR ([#573](https://github.com/input-output-hk/atala-prism-building-blocks/issues/573)) ([e036bc8](https://github.com/input-output-hk/atala-prism-building-blocks/commit/e036bc84446c8b7eb008f536def2adaca08e071f))
+* **castor:** fix DID parser that failing to parse some DIDs ([#581](https://github.com/input-output-hk/atala-prism-building-blocks/issues/581)) ([24b2300](https://github.com/input-output-hk/atala-prism-building-blocks/commit/24b230023ad2812dc13aa7229163ead5eb56183d))
+* **pollux:** add pagination at db level for getCredentialRecords ([#586](https://github.com/input-output-hk/atala-prism-building-blocks/issues/586)) ([c0db5c8](https://github.com/input-output-hk/atala-prism-building-blocks/commit/c0db5c8a2a4fee7568fb5aa43f81a2faba6936a2))
+
+
+### Features
+
+* **prism-agent:** add http metrics ([#585](https://github.com/input-output-hk/atala-prism-building-blocks/issues/585)) ([f62d7f5](https://github.com/input-output-hk/atala-prism-building-blocks/commit/f62d7f5459f12f93224b0eb9b05caf605f54be2c))
+* **prism-agent:** align DID document service handling with the spec ([#582](https://github.com/input-output-hk/atala-prism-building-blocks/issues/582)) ([c9e69f6](https://github.com/input-output-hk/atala-prism-building-blocks/commit/c9e69f602ef5e78848ad6d652f0ba7d4d4d2db2d))
+* **prism-agent:** expose connect/issue/presentation records 'thid' and add it to REST API queries ([#583](https://github.com/input-output-hk/atala-prism-building-blocks/issues/583)) ([9a97c7a](https://github.com/input-output-hk/atala-prism-building-blocks/commit/9a97c7a6e5815fd80eba0f98042a49356fc1f61c))
+* **prism-agent:** simple event mechanism using webhook ([#575](https://github.com/input-output-hk/atala-prism-building-blocks/issues/575)) ([42cf8c9](https://github.com/input-output-hk/atala-prism-building-blocks/commit/42cf8c9b47b2ac2d17e6d00b0901806e0f0e2e1d)), closes [#1](https://github.com/input-output-hk/atala-prism-building-blocks/issues/1)
+
+
+### Performance Improvements
+
+* add k6 connection flow running in CI ([#572](https://github.com/input-output-hk/atala-prism-building-blocks/issues/572)) ([601f934](https://github.com/input-output-hk/atala-prism-building-blocks/commit/601f934062537c8080657b6268299f18d8201ec2))
+
+# [1.6.0](https://github.com/input-output-hk/atala-prism-building-blocks/compare/prism-agent-v1.5.1...prism-agent-v1.6.0) (2023-06-28)
+
+
+### Bug Fixes
+
+* **prism-agent:** decouple secret storage backend from agent ([#570](https://github.com/input-output-hk/atala-prism-building-blocks/issues/570)) ([6a5f9ce](https://github.com/input-output-hk/atala-prism-building-blocks/commit/6a5f9cef337848dadd8a54b54948db9e7edfe8ad))
+* **prism-agent:** fix concurrent requests breaking DID index counter ([#571](https://github.com/input-output-hk/atala-prism-building-blocks/issues/571)) ([e8411dd](https://github.com/input-output-hk/atala-prism-building-blocks/commit/e8411ddb588e9dc81f2437cfbdfdcd1be42f99d1))
+* **prism-agent:** use correct pairwise DIDs in presentation flow ([#568](https://github.com/input-output-hk/atala-prism-building-blocks/issues/568)) ([ede234b](https://github.com/input-output-hk/atala-prism-building-blocks/commit/ede234bbdcb64cb48da182b374288b549b8cf8aa))
+
+
+### Features
+
+* new Anoncreds Demo ([#562](https://github.com/input-output-hk/atala-prism-building-blocks/issues/562)) ([a9a8290](https://github.com/input-output-hk/atala-prism-building-blocks/commit/a9a8290c73fb3044c2091311c199d1e532af03f0))
+
+## [1.5.1](https://github.com/input-output-hk/atala-prism-building-blocks/compare/prism-agent-v1.5.0...prism-agent-v1.5.1) (2023-06-22)
+
+
+### Bug Fixes
+
+* log seed error before effect fail ([#557](https://github.com/input-output-hk/atala-prism-building-blocks/issues/557)) ([c3a5d8e](https://github.com/input-output-hk/atala-prism-building-blocks/commit/c3a5d8eb9e62675053f9b7fc80ee18d7a62f857c))
+
+# [1.5.0](https://github.com/input-output-hk/atala-prism-building-blocks/compare/prism-agent-v1.4.0...prism-agent-v1.5.0) (2023-06-16)
+
+
+### Features
+
+* **prism-agent:** integrate credential schema into VC issue flow ([#541](https://github.com/input-output-hk/atala-prism-building-blocks/issues/541)) ([ab88736](https://github.com/input-output-hk/atala-prism-building-blocks/commit/ab88736dc9d6dfec3d39f6a58619eb115f520bf8))
+* **prism-agent:** integrate DID secret storage with Vault ([#543](https://github.com/input-output-hk/atala-prism-building-blocks/issues/543)) ([ee43feb](https://github.com/input-output-hk/atala-prism-building-blocks/commit/ee43febacddb06210065c3f812beb8c948d5c369))
+
+# [1.4.0](https://github.com/input-output-hk/atala-prism-building-blocks/compare/prism-agent-v1.3.0...prism-agent-v1.4.0) (2023-06-01)
+
+
+### Bug Fixes
+
+* **prism-agent:** infinite loop in proof presentation execution ([#540](https://github.com/input-output-hk/atala-prism-building-blocks/issues/540)) ([6a26bb7](https://github.com/input-output-hk/atala-prism-building-blocks/commit/6a26bb78d256bdcd09918cb1e8ee5bfd5cf0dacc))
+
+
+### Features
+
+* **prism-agent:** add support for hierarchical deterministic key with seed ([#534](https://github.com/input-output-hk/atala-prism-building-blocks/issues/534)) ([6129baf](https://github.com/input-output-hk/atala-prism-building-blocks/commit/6129baf1210b68decc4f264bd4a64b4009719956))
+
 # [1.3.0](https://github.com/input-output-hk/atala-prism-building-blocks/compare/prism-agent-v1.2.0...prism-agent-v1.3.0) (2023-05-23)
 
 

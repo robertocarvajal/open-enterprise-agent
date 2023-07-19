@@ -1,20 +1,12 @@
 package io.iohk.atala.pollux.credentialschema
 
 import io.iohk.atala.api.http.{ErrorResponse, RequestContext}
-import io.iohk.atala.api.http.model.{CollectionStats, Order, PaginationInput}
+import io.iohk.atala.api.http.model.{Order, PaginationInput}
 import io.iohk.atala.pollux.credentialschema.VerificationPolicyEndpoints.*
-import io.iohk.atala.pollux.credentialschema.controller.{
-  VerificationPolicyController,
-  VerificationPolicyPageRequestLogic
-}
-import io.iohk.atala.pollux.credentialschema.http.{VerificationPolicy, VerificationPolicyInput, VerificationPolicyPage}
-import sttp.tapir.redoc.RedocUIOptions
-import sttp.tapir.redoc.bundle.RedocInterpreter
-import sttp.tapir.server.ServerEndpoint
-import sttp.tapir.swagger.bundle.SwaggerInterpreter
+import io.iohk.atala.pollux.credentialschema.controller.VerificationPolicyController
+import io.iohk.atala.pollux.credentialschema.http.{VerificationPolicy, VerificationPolicyInput}
 import sttp.tapir.ztapir.*
-import zio.{Task, URIO, ZIO, ZLayer}
-
+import zio.*
 import java.util.UUID
 
 class VerificationPolicyServerEndpoints(
@@ -47,8 +39,8 @@ class VerificationPolicyServerEndpoints(
     }
 
   val deleteVerificationPolicyByIdServerEndpoint: ZServerEndpoint[Any, Any] =
-    deleteVerificationPolicyByIdEndpoint.zServerLogic { case (ctx: RequestContext, id: UUID, nonce: Int) =>
-      controller.deleteVerificationPolicyById(ctx, id, nonce)
+    deleteVerificationPolicyByIdEndpoint.zServerLogic { case (ctx: RequestContext, id: UUID) =>
+      controller.deleteVerificationPolicyById(ctx, id)
     }
 
   val lookupVerificationPoliciesByQueryServerEndpoint: ZServerEndpoint[Any, Any] =

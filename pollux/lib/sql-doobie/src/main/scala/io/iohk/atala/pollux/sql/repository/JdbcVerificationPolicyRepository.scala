@@ -1,14 +1,7 @@
 package io.iohk.atala.pollux.sql.repository
 
-import cats.Functor
-import cats.effect.std.Dispatcher
-import cats.effect.{Async, Resource}
-import cats.syntax.functor.*
 import doobie.*
-import doobie.enumerated.TransactionIsolation
-import doobie.hikari.HikariTransactor
 import doobie.implicits.*
-import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import io.iohk.atala.pollux.core.model
 import io.iohk.atala.pollux.core.model.{CredentialSchemaAndTrustedIssuersConstraint, VerificationPolicy}
@@ -55,7 +48,8 @@ object VerificationPolicyExtensions {
         description = vp.description,
         createdAt = vp.createdAt.atZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime,
         updatedAt = vp.updatedAt.atZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime,
-        constrains = constraints.map(_.toDomain)
+        constrains = constraints.map(_.toDomain),
+        nonce = vp.nonce
       )
   }
 
@@ -122,7 +116,7 @@ class JdbcVerificationPolicyRepository(xa: Transactor[Task]) extends Verificatio
     program.transact(xa)
   }
 
-  override def delete(id: UUID, nonce: Int): Task[Option[model.VerificationPolicy]] = {
+  override def delete(id: UUID): Task[Option[model.VerificationPolicy]] = {
     val program = for {
       vp <- VerificationPolicySql.getById(id)
       vpc <- VerificationPolicySql.getVerificationPolicyConstrains(Seq(id))

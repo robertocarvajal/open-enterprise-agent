@@ -3,7 +3,7 @@ package io.iohk.atala.pollux.core.service
 import io.iohk.atala.pollux.core.model.{VerificationPolicy, VerificationPolicyConstraint}
 import io.iohk.atala.pollux.core.model.error.VerificationPolicyError
 import io.iohk.atala.pollux.core.repository.VerificationPolicyRepository
-import zio.{Clock, IO, Random, Task, URLayer, ZLayer}
+import zio.*
 
 import java.util.UUID
 
@@ -35,23 +35,18 @@ class VerificationPolicyServiceImpl(
       .get(id)
       .mapError(throwableToVerificationPolicyError)
 
-  override def getHash(id: UUID): IO[VerificationPolicyError, Option[Int]] =
-    repository
-      .getHash(id)
-      .mapError(throwableToVerificationPolicyError)
-
   override def update(
       id: UUID,
-      hash: Int,
+      nonce: Int,
       verificationPolicy: VerificationPolicy
   ): IO[VerificationPolicyError, Option[VerificationPolicy]] =
     repository
-      .update(id, hash, verificationPolicy)
+      .update(id, nonce, verificationPolicy)
       .mapError(throwableToVerificationPolicyError)
 
-  override def delete(id: UUID, hash: Int): IO[VerificationPolicyError, Option[VerificationPolicy]] =
+  override def delete(id: UUID): IO[VerificationPolicyError, Option[VerificationPolicy]] =
     repository
-      .delete(id, hash)
+      .delete(id)
       .mapError(throwableToVerificationPolicyError)
 
   override def totalCount(): IO[VerificationPolicyError, Long] =

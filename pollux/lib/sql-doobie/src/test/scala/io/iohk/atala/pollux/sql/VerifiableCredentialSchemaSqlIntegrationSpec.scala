@@ -1,22 +1,11 @@
 package io.iohk.atala.pollux.sql
 
-import cats.Functor
-import cats.effect.std.Dispatcher
-import cats.effect.{Async, Resource}
-import cats.syntax.functor.*
 import com.dimafeng.testcontainers.PostgreSQLContainer
-import com.zaxxer.hikari.HikariConfig
 import doobie.*
-import doobie.hikari.HikariTransactor
 import doobie.implicits.*
-import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
-import io.getquill.*
-import io.getquill.idiom.*
-import io.getquill.util.Messages.{QuatTrace, TraceType, traceQuats}
 import io.iohk.atala.pollux.sql.model.VerifiableCredentialSchema
 import io.iohk.atala.pollux.sql.model.VerifiableCredentialSchema.sql
-import io.iohk.atala.pollux.sql.model.VerifiableCredentialSchema
 import io.iohk.atala.test.container.MigrationAspects.*
 import io.iohk.atala.test.container.PostgresLayer.*
 import zio.*
@@ -26,9 +15,8 @@ import zio.test.*
 import zio.test.Assertion.*
 import zio.test.TestAspect.*
 
-import java.time.{OffsetDateTime, ZoneOffset, ZonedDateTime}
-import java.util.concurrent.TimeUnit
-import java.util.{UUID, concurrent}
+import java.time.{OffsetDateTime, ZoneOffset}
+import java.util.UUID
 import scala.collection.mutable
 import scala.io.Source
 
@@ -61,6 +49,8 @@ object VerifiableCredentialSchemaSqlIntegrationSpec extends ZIOSpecDefault {
     val schemaAttribute =
       Gen.fromIterable(Vocabulary.verifiableCredentialClaims)
     val schemaAttributes = Gen.setOfBounded(1, 4)(schemaAttribute).map(_.toList)
+    val schemaAuthor =
+      Gen.int(1000000, 9999999).map(i => s"did:prism:4fb06243213500578f59588de3e1dd9b266ec1b61e43b0ff86ad0712f$i")
     val schemaAuthored = Gen.offsetDateTime
     val schemaTag: Gen[Any, String] = Gen.alphaNumericStringBounded(3, 5)
     val schemaTags: Gen[Any, List[String]] =
@@ -68,19 +58,20 @@ object VerifiableCredentialSchemaSqlIntegrationSpec extends ZIOSpecDefault {
 
     val schema: Gen[Any, VerifiableCredentialSchema] = for {
       name <- schemaName
-      id <- schemaId
       version <- schemaVersion
       description <- schemaDescription
       attributes <- schemaAttributes
       tags <- schemaTags
+      author <- schemaAuthor
       authored = OffsetDateTime.now(ZoneOffset.UTC)
+      id = UUID.randomUUID()
     } yield VerifiableCredentialSchema(
       id = id,
       name = name,
       version = version,
       description = Some(description),
       attributes = attributes,
-      author = "Prism Agent",
+      author = author,
       authored = authored,
       tags = tags
     )

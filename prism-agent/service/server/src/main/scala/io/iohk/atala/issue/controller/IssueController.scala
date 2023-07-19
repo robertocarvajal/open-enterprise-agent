@@ -1,7 +1,7 @@
 package io.iohk.atala.issue.controller
 
-import io.iohk.atala.api.http.{ErrorResponse, RequestContext}
 import io.iohk.atala.api.http.model.PaginationInput
+import io.iohk.atala.api.http.{ErrorResponse, RequestContext}
 import io.iohk.atala.issue.controller.http.{
   AcceptCredentialOfferRequest,
   CreateIssueCredentialRecordRequest,
@@ -9,7 +9,7 @@ import io.iohk.atala.issue.controller.http.{
   IssueCredentialRecordPage
 }
 import io.iohk.atala.pollux.core.model.error.CredentialServiceError
-import zio.{IO, ZIO}
+import zio.*
 
 trait IssueController {
   def createCredentialOffer(request: CreateIssueCredentialRecordRequest)(implicit
@@ -55,4 +55,10 @@ object IssueController {
         ErrorResponse.badRequest(title = "Credential ID not defined one request", detail = Some(msg.toString))
       case CredentialServiceError.IrisError(msg) =>
         ErrorResponse.internalServerError(title = "VDR Error", detail = Some(msg.toString))
+      case CredentialServiceError.CredentialSchemaError(e) =>
+        ErrorResponse.badRequest(title = "Credential Schema Error", detail = Some(e.userMessage))
+      case CredentialServiceError.UnsupportedVCClaimsValue(error) =>
+        ErrorResponse.badRequest(detail = Some(error))
+      case CredentialServiceError.UnsupportedVCClaimsMimeType(mimeType) =>
+        ErrorResponse.badRequest(detail = Some(s"Unsupported mime-type for claim: $mimeType"))
 }

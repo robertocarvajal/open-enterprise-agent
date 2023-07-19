@@ -1,6 +1,6 @@
 package io.iohk.atala.pollux.core.repository
 
-import io.iohk.atala.pollux.core.model.{VerificationPolicy, VerificationPolicyConstraint}
+import io.iohk.atala.pollux.core.model.VerificationPolicy
 
 import java.util.UUID
 
@@ -20,7 +20,7 @@ trait VerificationPolicyRepository[F[_]] {
       verificationPolicy: VerificationPolicy
   ): F[Option[VerificationPolicy]]
 
-  def delete(id: UUID, hash: Int): F[Option[VerificationPolicy]]
+  def delete(id: UUID): F[Option[VerificationPolicy]]
 
   def totalCount(): F[Long]
 

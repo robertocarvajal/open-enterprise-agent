@@ -1,7 +1,7 @@
 package io.iohk.atala.agent.server.jobs
 
-import com.nimbusds.jose.jwk.OctetKeyPair
 import io.iohk.atala.agent.server.config.AppConfig
+import io.iohk.atala.agent.server.jobs.BackgroundJobError.ErrorResponseReceivedFromPeerAgent
 import io.iohk.atala.agent.walletapi.model.error.DIDSecretStorageError
 import io.iohk.atala.agent.walletapi.model.error.DIDSecretStorageError.KeyNotFoundError
 import io.iohk.atala.agent.walletapi.service.ManagedDIDService
@@ -12,13 +12,8 @@ import io.iohk.atala.connect.core.service.ConnectionService
 import io.iohk.atala.mercury.*
 import io.iohk.atala.mercury.model.*
 import io.iohk.atala.mercury.model.error.*
-import io.iohk.atala.mercury.protocol.issuecredential.*
-import io.iohk.atala.resolvers.{DIDResolver, UniversalDidResolver}
-import org.didcommx.didcomm.DIDComm
+import io.iohk.atala.resolvers.DIDResolver
 import zio.*
-
-import java.io.IOException
-
 object ConnectBackgroundJobs {
 
   val didCommExchanges = {
@@ -65,7 +60,7 @@ object ConnectBackgroundJobs {
           connectionService <- ZIO.service[ConnectionService]
           _ <- {
             if (resp.status >= 200 && resp.status < 300) connectionService.markConnectionRequestSent(id)
-            else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+            else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
           }
         } yield ()
 
@@ -93,14 +88,10 @@ object ConnectBackgroundJobs {
           connectionService <- ZIO.service[ConnectionService]
           _ <- {
             if (resp.status >= 200 && resp.status < 300) connectionService.markConnectionResponseSent(id)
-            else ZIO.logWarning(s"DIDComm sending error: [${resp.status}] - ${resp.bodyAsString}")
+            else ZIO.fail(ErrorResponseReceivedFromPeerAgent(resp))
           }
         } yield ()
-      case e
-          if (e.protocolState == ConnectionRequestPending || e.protocolState == ConnectionResponsePending) && e.metaRetries == 0 =>
-        ZIO.logWarning( // TODO use logDebug
-          s"ConnectionRecord '${e.id}' has '${e.metaRetries}' retries and will NOT be processed"
-        )
+
       case _ => ZIO.unit
     }
 

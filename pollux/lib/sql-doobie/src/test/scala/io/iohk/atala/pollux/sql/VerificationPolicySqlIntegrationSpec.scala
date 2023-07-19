@@ -1,26 +1,15 @@
 package io.iohk.atala.pollux.sql
 
-import cats.Functor
-import cats.effect.std.Dispatcher
-import cats.effect.{Async, Resource}
-import cats.syntax.functor.*
 import com.dimafeng.testcontainers.PostgreSQLContainer
-import com.zaxxer.hikari.HikariConfig
 import doobie.*
-import doobie.hikari.HikariTransactor
 import doobie.implicits.*
-import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
-import io.getquill.*
-import io.getquill.idiom.*
-import io.getquill.util.Messages.{QuatTrace, TraceType, traceQuats}
 import io.iohk.atala.pollux.core.model.{
   CredentialSchemaAndTrustedIssuersConstraint,
   VerificationPolicy,
   VerificationPolicyConstraint
 }
 import io.iohk.atala.pollux.core.repository.VerificationPolicyRepository
-import io.iohk.atala.pollux.sql.model.VerifiableCredentialSchema
 import io.iohk.atala.pollux.sql.model.db.VerificationPolicySql
 import io.iohk.atala.pollux.sql.repository.JdbcVerificationPolicyRepository
 import io.iohk.atala.test.container.MigrationAspects.*
@@ -31,12 +20,6 @@ import zio.interop.catz.implicits.*
 import zio.test.*
 import zio.test.Assertion.*
 import zio.test.TestAspect.*
-
-import java.time.{OffsetDateTime, ZoneOffset, ZonedDateTime}
-import java.util.concurrent.TimeUnit
-import java.util.{UUID, concurrent}
-import scala.collection.mutable
-import scala.io.Source
 
 object VerificationPolicySqlIntegrationSpec extends ZIOSpecDefault {
 
@@ -84,7 +67,7 @@ object VerificationPolicySqlIntegrationSpec extends ZIOSpecDefault {
           actualUpdated <- repo
             .update(
               actualCreated.id,
-              actualCreated.hashCode(),
+              actualCreated.nonce,
               expectedUpdated
             )
             .map(_.get)
@@ -93,13 +76,32 @@ object VerificationPolicySqlIntegrationSpec extends ZIOSpecDefault {
           isUpdated = assert(actualUpdated)(equalTo(expectedUpdated.copy(updatedAt = actualUpdated.updatedAt))) &&
             assert(getByIdUpdated)(equalTo(expectedUpdated.copy(updatedAt = actualUpdated.updatedAt)))
 
+          //
+
+          expectedUpdated2 = actualUpdated.copy(
+            name = "new name 2 ",
+            description = "new description 2"
+          )
+          actualUpdated2 <- repo
+            .update(
+              actualUpdated.id,
+              actualUpdated.nonce,
+              expectedUpdated2
+            )
+            .map(_.get)
+          getByIdUpdated2 <- repo.get(expectedUpdated2.id).map(_.get)
+
+          isUpdated2 = assert(actualUpdated2)(equalTo(expectedUpdated2.copy(updatedAt = actualUpdated.updatedAt))) &&
+            assert(getByIdUpdated2)(equalTo(expectedUpdated2.copy(updatedAt = actualUpdated.updatedAt)))
+
+          //
+
           actualDeleted <- repo.delete(
-            expectedUpdated.id,
-            actualUpdated.hashCode()
+            expectedUpdated.id
           )
 
           isDeletedReturnedBack = assert(actualDeleted)(
-            isSome(equalTo(actualUpdated))
+            isSome(equalTo(actualUpdated2))
           )
           getByIdDeleted <- repo.get(actualUpdated.id)
 

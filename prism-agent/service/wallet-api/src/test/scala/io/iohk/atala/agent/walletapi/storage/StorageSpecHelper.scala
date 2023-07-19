@@ -14,6 +14,7 @@ import io.iohk.atala.agent.walletapi.model.DIDPublicKeyTemplate
 import io.iohk.atala.castor.core.model.did.VerificationRelationship
 import zio.*
 import io.iohk.atala.agent.walletapi.model.ManagedDIDState
+import io.iohk.atala.agent.walletapi.model.PublicationState
 
 trait StorageSpecHelper extends ApolloSpecHelper {
   protected val didExample = PrismDID.buildLongFormFromOperation(PrismDIDOperation.Create(Nil, Nil, Nil))
@@ -34,25 +35,35 @@ trait StorageSpecHelper extends ApolloSpecHelper {
   protected def generateKeyPair() = apollo.ecKeyFactory.generateKeyPair(EllipticCurve.SECP256K1)
 
   protected def generateCreateOperation(keyIds: Seq[String]) =
-    OperationFactory.makeCreateOperation("master0", generateKeyPair)(
+    OperationFactory(apollo).makeCreateOperationRandKey("master0")(
       ManagedDIDTemplate(
         publicKeys = keyIds.map(DIDPublicKeyTemplate(_, VerificationRelationship.Authentication)),
-        services = Nil
+        services = Nil,
+        contexts = Nil
       )
     )
 
-  protected def initializeDIDStateAndKeys(keyIds: Seq[String] = Nil) = {
+  protected def generateCreateOperationHdKey(keyIds: Seq[String], didIndex: Int) =
+    OperationFactory(apollo).makeCreateOperationHdKey("master0", Array.fill(64)(0))(
+      didIndex,
+      ManagedDIDTemplate(
+        publicKeys = keyIds.map(DIDPublicKeyTemplate(_, VerificationRelationship.Authentication)),
+        services = Nil,
+        contexts = Nil
+      )
+    )
+
+  protected def initializeDIDStateAndKeys(keyIds: Seq[String] = Nil, didIndex: Int) = {
     for {
       nonSecretStorage <- ZIO.service[DIDNonSecretStorage]
-      secretStorage <- ZIO.service[DIDSecretStorage]
-      generated <- generateCreateOperation(keyIds)
-      (createOperation, secrets) = generated
+      generated <- generateCreateOperationHdKey(keyIds, didIndex)
+      (createOperation, hdKeys) = generated
       did = createOperation.did
-      keyPairs = secrets.keyPairs.toSeq
-      _ <- nonSecretStorage.setManagedDIDState(did, ManagedDIDState.Created(createOperation))
-      _ <- ZIO.foreach(keyPairs) { case (keyId, keyPair) =>
-        secretStorage.insertKey(did, keyId, keyPair, createOperation.toAtalaOperationHash)
-      }
-    } yield (did, keyPairs)
+      _ <- nonSecretStorage.insertManagedDID(
+        did,
+        ManagedDIDState(createOperation, didIndex, PublicationState.Created()),
+        hdKeys.keyPaths ++ hdKeys.internalKeyPaths
+      )
+    } yield did
   }
 }

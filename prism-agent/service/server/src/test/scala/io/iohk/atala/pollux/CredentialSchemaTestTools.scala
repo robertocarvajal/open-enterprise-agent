@@ -1,6 +1,11 @@
 package io.iohk.atala.pollux
 
+import io.iohk.atala.agent.walletapi.model.{ManagedDIDState, PublicationState}
+import io.iohk.atala.agent.walletapi.service.{ManagedDIDService, MockManagedDIDService}
 import io.iohk.atala.api.http.ErrorResponse
+import io.iohk.atala.castor.core.model.did.PrismDIDOperation
+import io.iohk.atala.container.util.PostgresLayer.*
+import io.iohk.atala.pollux.core.model.schema.`type`.CredentialJsonSchemaType
 import io.iohk.atala.pollux.core.repository.CredentialSchemaRepository
 import io.iohk.atala.pollux.core.service.CredentialSchemaServiceImpl
 import io.iohk.atala.pollux.credentialschema.SchemaRegistryServerEndpoints
@@ -11,24 +16,19 @@ import io.iohk.atala.pollux.credentialschema.http.{
   CredentialSchemaResponsePage
 }
 import io.iohk.atala.pollux.sql.repository.JdbcCredentialSchemaRepository
-import io.iohk.atala.container.util.MigrationAspects.*
-import io.iohk.atala.container.util.PostgresLayer.*
 import sttp.client3.testing.SttpBackendStub
 import sttp.client3.ziojson.*
-import sttp.client3.{DeserializationException, Response, ResponseException, SttpBackend, UriContext, basicRequest}
-import sttp.model.{StatusCode, Uri}
+import sttp.client3.{DeserializationException, Response, UriContext, basicRequest}
 import sttp.monad.MonadError
 import sttp.tapir.server.interceptor.CustomiseInterceptors
 import sttp.tapir.server.stub.TapirStubInterpreter
 import sttp.tapir.ztapir.RIOMonadError
+import zio.*
+import zio.json.ast.Json
 import zio.json.ast.Json.*
-import zio.json.{DecoderOps, EncoderOps, JsonDecoder}
-import zio.stream.ZSink
-import zio.stream.ZSink.*
-import zio.stream.ZStream.unfold
-import zio.test.TestAspect.*
-import zio.test.{Gen, Spec, ZIOSpecDefault}
-import zio.{RIO, Task, URLayer, ZIO, ZLayer}
+import zio.json.{DecoderOps, EncoderOps}
+import zio.mock.Expectation
+import zio.test.{Assertion, Gen, ZIOSpecDefault}
 
 import java.time.OffsetDateTime
 
@@ -51,6 +51,20 @@ trait CredentialSchemaTestTools {
     CredentialSchemaServiceImpl.layer >+>
     CredentialSchemaControllerImpl.layer
 
+  val mockManagedDIDServiceLayer: Expectation[ManagedDIDService] = MockManagedDIDService
+    .GetManagedDIDState(
+      assertion = Assertion.anything,
+      result = Expectation.value(
+        Some(
+          ManagedDIDState(
+            PrismDIDOperation.Create(Nil, Nil, Nil),
+            0,
+            PublicationState.Published(scala.collection.immutable.ArraySeq.empty)
+          )
+        )
+      )
+    )
+
   val testEnvironmentLayer = zio.test.testEnvironment ++
     pgLayer ++
     transactorLayer ++
@@ -59,7 +73,6 @@ trait CredentialSchemaTestTools {
   val credentialSchemaUriBase = uri"http://test.com/schema-registry/schemas"
 
   def bootstrapOptions[F[_]](monadError: MonadError[F]) = {
-    import sttp.tapir.server.interceptor.RequestResult.Response
     new CustomiseInterceptors[F, Any](_ => ())
       .defaultHandlers(ErrorResponse.failureResponseHandler)
   }
@@ -111,7 +124,23 @@ trait CredentialSchemaGen {
     val schemaTags: Gen[Any, List[String]] =
       Gen.setOfBounded(0, 3)(schemaTag).map(_.toList)
 
-    val schemaAuthor = Gen.alphaNumericStringBounded(64, 64).map(id => s"did:prism:$id")
+    val schemaAuthor =
+      Gen.int(1000000, 9999999).map(i => s"did:prism:4fb06243213500578f59588de3e1dd9b266ec1b61e43b0ff86ad0712f$i")
+
+    val jsonSchema =
+      """
+        |{
+        |    "$schema": "https://json-schema.org/draft/2020-12/schema",
+        |    "description": "Driving License",
+        |    "type": "object",
+        |    "properties": {
+        |        "name" : "Alice"
+        |    },
+        |    "required": [
+        |        "name"
+        |    ]
+        |}
+        |""".stripMargin
 
     val schemaInput = for {
       name <- schemaName
@@ -123,8 +152,8 @@ trait CredentialSchemaGen {
       name = name,
       version = version,
       description = Some(description),
-      `type` = "json",
-      schema = Arr(Obj("first_name" -> Str("String"))),
+      `type` = CredentialJsonSchemaType.`type`,
+      schema = jsonSchema.fromJson[Json].getOrElse(Json.Null),
       tags = tags,
       author = author
     )

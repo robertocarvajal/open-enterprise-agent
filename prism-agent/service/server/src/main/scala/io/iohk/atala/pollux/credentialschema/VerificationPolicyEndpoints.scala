@@ -6,24 +6,8 @@ import io.iohk.atala.api.http.codec.OrderCodec.*
 import io.iohk.atala.api.http.model.{Order, PaginationInput}
 import io.iohk.atala.pollux.credentialschema.http.*
 import sttp.model.StatusCode
-import sttp.tapir.EndpointIO.Info
 import sttp.tapir.json.zio.jsonBody
-import sttp.tapir.{
-  Endpoint,
-  EndpointInfo,
-  PublicEndpoint,
-  endpoint,
-  extractFromRequest,
-  oneOf,
-  oneOfDefaultVariant,
-  oneOfVariant,
-  path,
-  query,
-  statusCode,
-  stringToPath
-}
-import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder}
-
+import sttp.tapir.{PublicEndpoint, endpoint, extractFromRequest, path, query, statusCode, stringToPath}
 import java.util.UUID
 
 object VerificationPolicyEndpoints {
@@ -109,7 +93,7 @@ object VerificationPolicyEndpoints {
       .tag("Verification")
 
   val deleteVerificationPolicyByIdEndpoint: PublicEndpoint[
-    (RequestContext, UUID, Int),
+    (RequestContext, UUID),
     ErrorResponse,
     Unit,
     Any
@@ -119,11 +103,6 @@ object VerificationPolicyEndpoints {
       .in(
         "verification" / "policies" / path[UUID]("id")
           .description("Delete the verification policy by id")
-      )
-      .in(
-        query[Int](name = "nonce").description(
-          "Nonce of the previous VerificationPolicy"
-        )
       )
       .out(
         statusCode(StatusCode.Ok).description(

@@ -1,8 +1,8 @@
 package io.iohk.atala.pollux.core.model
 
-import zio.{Clock, Random, ZIO}
+import zio.{Clock, Random}
 
-import java.time.{OffsetDateTime, ZoneId, ZoneOffset}
+import java.time.{OffsetDateTime, ZoneOffset}
 import java.util.UUID
 
 case class VerificationPolicy(
@@ -11,17 +11,24 @@ case class VerificationPolicy(
     description: String,
     createdAt: OffsetDateTime,
     updatedAt: OffsetDateTime,
-    constrains: Seq[VerificationPolicyConstraint]
-) {
-  def nonce: Int = hashCode()
-}
+    constrains: Seq[VerificationPolicyConstraint],
+    nonce: Int
+)
 
 object VerificationPolicy {
-  def make(name: String, description: String, constraints: Seq[VerificationPolicyConstraint]) =
+  def make(name: String, description: String, constraints: Seq[VerificationPolicyConstraint], nonce: Int = 0) =
     for {
       id <- Random.nextUUID
       ts <- Clock.currentDateTime.map(_.atZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime)
-    } yield VerificationPolicy(id, name, description, createdAt = ts, updatedAt = ts, constrains = constraints)
+    } yield VerificationPolicy(
+      id,
+      name,
+      description,
+      createdAt = ts,
+      updatedAt = ts,
+      constrains = constraints,
+      nonce = nonce
+    )
 }
 sealed trait VerificationPolicyConstraint
 

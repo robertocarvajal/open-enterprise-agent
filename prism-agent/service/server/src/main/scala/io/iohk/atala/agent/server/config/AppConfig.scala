@@ -8,17 +8,20 @@ import zio.config.magnolia.Descriptor
 import java.time.Duration
 
 final case class AppConfig(
+    devMode: Boolean,
     iris: IrisConfig,
     castor: CastorConfig,
     pollux: PolluxConfig,
     agent: AgentConfig,
     connect: ConnectConfig,
-    prismNode: PrismNodeConfig
+    prismNode: PrismNodeConfig,
 )
 
 object AppConfig {
   val descriptor: ConfigDescriptor[AppConfig] = Descriptor[AppConfig]
 }
+
+final case class VaultConfig(address: String, token: String)
 
 final case class IrisConfig(service: GrpcServiceConfig)
 
@@ -87,13 +90,26 @@ final case class VerificationConfig(options: Options) {
   }
 }
 
+final case class WebhookPublisherConfig(
+    url: Option[String],
+    apiKey: Option[String],
+    parallelism: Option[Int]
+)
+
 final case class AgentConfig(
     httpEndpoint: HttpEndpointConfig,
     didCommServiceEndpointUrl: String,
     database: DatabaseConfig,
-    verification: VerificationConfig
+    verification: VerificationConfig,
+    secretStorage: SecretStorageConfig,
+    webhookPublisher: WebhookPublisherConfig
 )
 
 final case class HttpEndpointConfig(http: HttpConfig)
 
 final case class HttpConfig(port: Int)
+
+final case class SecretStorageConfig(
+    backend: String,
+    vault: Option[VaultConfig],
+)

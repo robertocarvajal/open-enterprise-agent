@@ -6,18 +6,6 @@ import io.iohk.atala.agent.server.config.AppConfig
 import io.iohk.atala.api.http.ErrorResponse
 import io.iohk.atala.connect.core.repository.ConnectionRepositoryInMemory
 import io.iohk.atala.connect.core.service.ConnectionServiceImpl
-import io.iohk.atala.connect.sql.repository.JdbcConnectionRepository
-import io.iohk.atala.pollux.core.repository.{CredentialRepositoryInMemory, CredentialSchemaRepository}
-import io.iohk.atala.pollux.core.service.{CredentialSchemaServiceImpl, CredentialServiceImpl}
-import io.iohk.atala.pollux.credentialschema.SchemaRegistryServerEndpoints
-import io.iohk.atala.pollux.credentialschema.controller.{CredentialSchemaController, CredentialSchemaControllerImpl}
-import io.iohk.atala.pollux.credentialschema.http.{
-  CredentialSchemaInput,
-  CredentialSchemaResponse,
-  CredentialSchemaResponsePage
-}
-import io.iohk.atala.pollux.sql.repository.JdbcCredentialSchemaRepository
-import io.iohk.atala.container.util.MigrationAspects.*
 import io.iohk.atala.container.util.PostgresLayer.*
 import io.iohk.atala.iris.proto.service.IrisServiceGrpc
 import io.iohk.atala.issue.controller.http.{
@@ -25,27 +13,21 @@ import io.iohk.atala.issue.controller.http.{
   IssueCredentialRecord,
   IssueCredentialRecordPage
 }
+import io.iohk.atala.pollux.core.repository.CredentialRepositoryInMemory
+import io.iohk.atala.pollux.core.service.*
 import io.iohk.atala.pollux.vc.jwt.*
 import sttp.client3.testing.SttpBackendStub
-import sttp.client3.ziojson.*
-import sttp.client3.{DeserializationException, Response, ResponseException, SttpBackend, UriContext, basicRequest}
-import sttp.model.{StatusCode, Uri}
+import sttp.client3.{DeserializationException, Response, UriContext}
 import sttp.monad.MonadError
 import sttp.tapir.server.interceptor.CustomiseInterceptors
 import sttp.tapir.server.stub.TapirStubInterpreter
 import sttp.tapir.ztapir.RIOMonadError
-import zio.config.{ReadError, read}
 import zio.config.typesafe.TypesafeConfigSource
+import zio.config.{ReadError, read}
+import zio.json.ast.Json
 import zio.json.ast.Json.*
-import zio.json.{DecoderOps, EncoderOps, JsonDecoder}
-import zio.stream.ZSink
-import zio.stream.ZSink.*
-import zio.stream.ZStream.unfold
-import zio.test.TestAspect.*
-import zio.test.{Gen, Spec, ZIOSpecDefault}
-import zio.{Layer, RIO, Task, URLayer, ZIO, ZLayer}
-
-import java.time.OffsetDateTime
+import zio.test.*
+import zio.*
 
 trait IssueControllerTestTools {
   self: ZIOSpecDefault =>
@@ -95,6 +77,7 @@ trait IssueControllerTestTools {
     configLayer >+>
     irisStubLayer >+>
     didResolverLayer >+>
+    ResourceURIDereferencerImpl.layer >+>
     CredentialRepositoryInMemory.layer >+>
     CredentialServiceImpl.layer >+>
     ConnectionRepositoryInMemory.layer >+>
@@ -109,7 +92,6 @@ trait IssueControllerTestTools {
   val issueUriBase = uri"http://test.com/issue-credentials/"
 
   def bootstrapOptions[F[_]](monadError: MonadError[F]): CustomiseInterceptors[F, Any] = {
-    import sttp.tapir.server.interceptor.RequestResult.Response
     new CustomiseInterceptors[F, Any](_ => ())
       .defaultHandlers(ErrorResponse.failureResponseHandler)
   }
@@ -142,20 +124,23 @@ trait IssueGen {
   self: ZIOSpecDefault with IssueControllerTestTools =>
   object Generator {
     val gValidityPeriod: Gen[Any, Double] = Gen.double
-    val gClaims: Gen[Any, Map[String, String]] =
-      Gen.mapOf(Gen.alphaNumericStringBounded(5, 20), Gen.alphaNumericStringBounded(5, 20))
     val gAutomaticIssuance: Gen[Any, Boolean] = Gen.boolean
     val gIssuingDID: Gen[Any, String] = Gen.alphaNumericStringBounded(5, 20) // TODO Make a DID generator
     val gConnectionId: Gen[Any, String] = Gen.alphaNumericStringBounded(5, 20)
 
+    val claims = Json.Obj(
+      "key1" -> Json.Str("value1"),
+      "key2" -> Json.Str("value2")
+    )
+
     val schemaInput = for {
       validityPeriod <- gValidityPeriod
-      claims <- gClaims
       automaticIssuance <- gAutomaticIssuance
       issuingDID <- gIssuingDID
       connectionId <- gConnectionId
     } yield CreateIssueCredentialRecordRequest(
       validityPeriod = Some(validityPeriod),
+      schemaId = None,
       claims = claims,
       automaticIssuance = Some(automaticIssuance),
       issuingDID = issuingDID,

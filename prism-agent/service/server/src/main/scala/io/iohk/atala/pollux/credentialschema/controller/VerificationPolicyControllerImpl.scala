@@ -7,16 +7,10 @@ import io.iohk.atala.pollux.core.model.CredentialSchemaAndTrustedIssuersConstrai
 import io.iohk.atala.pollux.core.model.error.VerificationPolicyError
 import io.iohk.atala.pollux.core.model.error.VerificationPolicyError.*
 import io.iohk.atala.pollux.core.service.VerificationPolicyService
-import io.iohk.atala.pollux.credentialschema.controller.*
 import io.iohk.atala.pollux.credentialschema.http.VerificationPolicy.*
-import io.iohk.atala.pollux.credentialschema.http.{
-  VerificationPolicy,
-  VerificationPolicyConstraint,
-  VerificationPolicyInput,
-  VerificationPolicyPage
-}
+import io.iohk.atala.pollux.credentialschema.http.{VerificationPolicy, VerificationPolicyInput, VerificationPolicyPage}
 import zio.ZIO.*
-import zio.{IO, Task, URLayer, ZLayer}
+import zio.*
 
 import java.util.UUID
 
@@ -87,7 +81,8 @@ class VerificationPolicyControllerImpl(service: VerificationPolicyService) exten
       vp <- model.VerificationPolicy.make(
         update.name,
         update.description,
-        constraints
+        constraints,
+        nonce = nonce + 1
       )
       updated <- service.update(id, nonce, vp)
     } yield updated
@@ -102,11 +97,10 @@ class VerificationPolicyControllerImpl(service: VerificationPolicyService) exten
 
   override def deleteVerificationPolicyById(
       ctx: RequestContext,
-      id: UUID,
-      nonce: Int
+      id: UUID
   ): IO[ErrorResponse, Unit] = {
     service
-      .delete(id, nonce)
+      .delete(id)
       .flatMap {
         case Some(_) => succeed(())
         case None    => fail(NotFoundError(id))

@@ -2,13 +2,15 @@ package io.iohk.atala.issue.controller.http
 
 import io.iohk.atala.api.http.Annotation
 import io.iohk.atala.issue.controller.http.IssueCredentialRecord.annotations
+import io.iohk.atala.mercury.model.{AttachmentDescriptor, Base64}
 import io.iohk.atala.pollux.core.model.IssueCredentialRecord as PolluxIssueCredentialRecord
-import sttp.tapir.Schema.annotations.{description, encodedExample}
-import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder, JsonDecoder, JsonEncoder}
-import io.iohk.atala.mercury.model.AttachmentDescriptor
-import io.iohk.atala.mercury.model.Base64
 import sttp.tapir.Schema
+import sttp.tapir.Schema.annotations.{description, encodedExample}
+import sttp.tapir.json.zio.schemaForZioJsonValue
+import zio.json.*
+import zio.json.ast.Json
 
+import java.nio.charset.StandardCharsets
 import java.time.{OffsetDateTime, ZoneOffset}
 
 /** A class to represent an an outgoing response for a created credential offer.
@@ -40,6 +42,12 @@ import java.time.{OffsetDateTime, ZoneOffset}
   *   Issuer DID of the verifiable credential object. for example: ''did:prism:issuerofverifiablecredentials''
   */
 final case class IssueCredentialRecord(
+    @description(annotations.recordId.description)
+    @encodedExample(annotations.recordId.example)
+    recordId: String,
+    @description(annotations.thid.description)
+    @encodedExample(annotations.thid.example)
+    thid: String,
     @description(annotations.subjectId.description)
     @encodedExample(annotations.subjectId.example)
     subjectId: Option[String] = None,
@@ -48,13 +56,10 @@ final case class IssueCredentialRecord(
     validityPeriod: Option[Double] = None,
     @description(annotations.claims.description)
     @encodedExample(annotations.claims.example)
-    claims: Map[String, String],
+    claims: zio.json.ast.Json,
     @description(annotations.automaticIssuance.description)
     @encodedExample(annotations.automaticIssuance.example)
     automaticIssuance: Option[Boolean] = None,
-    @description(annotations.recordId.description)
-    @encodedExample(annotations.recordId.example)
-    recordId: String,
     @description(annotations.createdAt.description)
     @encodedExample(annotations.createdAt.example)
     createdAt: OffsetDateTime,
@@ -80,13 +85,26 @@ object IssueCredentialRecord {
   def fromDomain(domain: PolluxIssueCredentialRecord): IssueCredentialRecord =
     IssueCredentialRecord(
       recordId = domain.id.value,
+      thid = domain.thid.value,
       createdAt = domain.createdAt.atOffset(ZoneOffset.UTC),
       updatedAt = domain.updatedAt.map(_.atOffset(ZoneOffset.UTC)),
       role = domain.role.toString,
       subjectId = domain.subjectId,
       claims = domain.offerCredentialData
-        .map(offer => offer.body.credential_preview.attributes.map(attr => (attr.name -> attr.value)).toMap)
-        .getOrElse(Map.empty),
+        .map(offer =>
+          offer.body.credential_preview.attributes
+            .foldLeft(Json.Obj()) { case (jsObject, attr) =>
+              val jsonValue = attr.mimeType match
+                case Some("application/json") =>
+                  val jsonString =
+                    String(java.util.Base64.getUrlDecoder.decode(attr.value.getBytes(StandardCharsets.UTF_8)))
+                  jsonString.fromJson[Json].getOrElse(Json.Str(s"Unsupported VC claims value: $jsonString"))
+                case Some(mime) => Json.Str(s"Unsupported 'mime-type': $mime")
+                case None       => Json.Str(attr.value)
+              jsObject.copy(fields = jsObject.fields.appended(attr.name -> jsonValue))
+            }
+        )
+        .getOrElse(Json.Null),
       validityPeriod = domain.validityPeriod,
       automaticIssuance = domain.automaticIssuance,
       protocolState = domain.protocolState.toString,
@@ -96,6 +114,8 @@ object IssueCredentialRecord {
         }
       })
     )
+
+  given Conversion[PolluxIssueCredentialRecord, IssueCredentialRecord] = fromDomain
 
   object annotations {
 
@@ -131,6 +151,13 @@ object IssueCredentialRecord {
         extends Annotation[String](
           description = "The unique identifier of the issue credential record.",
           example = "80d612dc-0ded-4ac9-90b4-1b8eabb04545"
+        )
+
+    object thid
+        extends Annotation[String](
+          description = "The unique identifier of the thread this credential record belongs to. " +
+            "The value will identical on both sides of the issue flow (issuer and holder)",
+          example = "0527aea1-d131-3948-a34d-03af39aba8b4"
         )
 
     object createdAt

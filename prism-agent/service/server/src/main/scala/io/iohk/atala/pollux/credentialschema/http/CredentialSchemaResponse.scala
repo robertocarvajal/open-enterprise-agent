@@ -1,23 +1,19 @@
 package io.iohk.atala.pollux.credentialschema.http
 
+import io.iohk.atala.api.http.*
 import io.iohk.atala.pollux.core.model
-import io.iohk.atala.pollux.core.model.CredentialSchema.Input
-import io.iohk.atala.pollux.credentialschema.http.CredentialSchemaInput
-import io.iohk.atala.pollux.credentialschema.http.Proof
+import io.iohk.atala.pollux.core.model.schema.CredentialSchema
+import io.iohk.atala.pollux.credentialschema.http.CredentialSchemaResponse.annotations
 import sttp.model.Uri
 import sttp.model.Uri.*
-import sttp.tapir.EndpointIO.annotations.{example, query}
 import sttp.tapir.Schema
 import sttp.tapir.Schema.annotations.{default, description, encodedExample, encodedName}
 import sttp.tapir.json.zio.schemaForZioJsonValue
-import zio.json.ast.Json
 import zio.json.*
-import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder}
-import io.iohk.atala.api.http.*
+import zio.json.ast.Json
 
-import java.time.{OffsetDateTime, ZoneOffset}
+import java.time.OffsetDateTime
 import java.util.UUID
-import CredentialSchemaResponse.annotations
 
 case class CredentialSchemaResponse(
     @description(annotations.guid.description)
@@ -69,7 +65,7 @@ case class CredentialSchemaResponse(
 
 object CredentialSchemaResponse {
 
-  def fromDomain(cs: model.CredentialSchema): CredentialSchemaResponse =
+  def fromDomain(cs: CredentialSchema): CredentialSchemaResponse =
     CredentialSchemaResponse(
       guid = cs.guid,
       id = cs.id.toString,
@@ -85,7 +81,7 @@ object CredentialSchemaResponse {
       proof = None
     )
 
-  given scala.Conversion[model.CredentialSchema, CredentialSchemaResponse] = fromDomain
+  given scala.Conversion[CredentialSchema, CredentialSchemaResponse] = fromDomain
 
   given encoder: zio.json.JsonEncoder[CredentialSchemaResponse] =
     DeriveJsonEncoder.gen[CredentialSchemaResponse]
@@ -185,45 +181,43 @@ object CredentialSchemaResponse {
         )
 
     val DrivingLicenseSchemaExample =
-      """{
-          |  "$id": "driving-license-1.0",
-          |  "$schema": "https://json-schema.org/draft/2020-12/schema",
-          |  "description": "Driving License",
-          |  "type": "object",
-          |  "properties": {
-          |    "credentialSubject": {
-          |      "type": "object",
-          |      "properties": {
-          |        "emailAddress": {
-          |          "type": "string",
-          |          "format": "email"
-          |        },
-          |        "givenName": {
-          |           "type": "string"
-          |        },
-          |        "familyName": {
-          |           "type": "string"
-          |        },
-          |        "dateOfIssuance": {
-          |           "type": "datetime"
-          |        },
-          |        "drivingLicenseID": {
-          |           "type": "string"
-          |        },
-          |        "drivingClass": {
-          |           "type": "integer"
-          |        },
-          |        "required": [
-          |          "emailAddress",
-          |          "familyName",
-          |          "dateOfIssuance",
-          |          "drivingLicenseID",
-          |          "drivingClass"
-          |        ],
-          |        "additionalProperties": true
-          |      }
-          |    }
-          |  }
-          |}""".stripMargin
+      """
+        |{
+        |  "$id": "https://example.com/driving-license-1.0",
+        |  "$schema": "https://json-schema.org/draft/2020-12/schema",
+        |  "description": "Driving License",
+        |  "type": "object",
+        |  "properties": {
+        |    "emailAddress": {
+        |      "type": "string",
+        |      "format": "email"
+        |    },
+        |    "givenName": {
+        |      "type": "string"
+        |    },
+        |    "familyName": {
+        |      "type": "string"
+        |    },
+        |    "dateOfIssuance": {
+        |      "type": "string",
+        |      "format": "date-time"
+        |    },
+        |    "drivingLicenseID": {
+        |      "type": "string"
+        |    },
+        |    "drivingClass": {
+        |      "type": "integer"
+        |    }
+        |  },
+        |  "required": [
+        |    "emailAddress",
+        |    "familyName",
+        |    "dateOfIssuance",
+        |    "drivingLicenseID",
+        |    "drivingClass"
+        |  ],
+        |  "additionalProperties": false
+        |}
+        |""".stripMargin
   }
 }

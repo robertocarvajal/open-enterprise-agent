@@ -11,25 +11,8 @@ import io.iohk.atala.pollux.credentialschema.http.{
   FilterInput
 }
 import sttp.model.StatusCode
-import sttp.tapir.EndpointIO.Info
 import sttp.tapir.json.zio.jsonBody
-import sttp.tapir.{
-  Endpoint,
-  EndpointInfo,
-  EndpointInput,
-  PublicEndpoint,
-  endpoint,
-  extractFromRequest,
-  oneOf,
-  oneOfDefaultVariant,
-  oneOfVariant,
-  path,
-  query,
-  statusCode,
-  stringToPath
-}
-import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder}
-
+import sttp.tapir.{EndpointInput, PublicEndpoint, endpoint, extractFromRequest, path, query, statusCode, stringToPath}
 import java.util.UUID
 
 object SchemaRegistryEndpoints {
@@ -57,7 +40,7 @@ object SchemaRegistryEndpoints {
       )
       .out(jsonBody[CredentialSchemaResponse])
       .description("Credential schema record")
-      .errorOut(basicFailures)
+      .errorOut(basicFailuresAndNotFound)
       .name("createSchema")
       .summary("Publish new schema to the schema registry")
       .description(
@@ -93,7 +76,7 @@ object SchemaRegistryEndpoints {
       )
       .out(jsonBody[CredentialSchemaResponse])
       .description("Credential schema record")
-      .errorOut(basicFailures)
+      .errorOut(basicFailuresAndNotFound)
       .name("updateSchema")
       .summary("Publish the new version of the credential schema to the schema registry")
       .description(
