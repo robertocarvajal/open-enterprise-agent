@@ -13,7 +13,7 @@
       enable: true
       config:
         whitelist:
-        {{- range .Values.consumers }}
+        {{- range .Values.ingress.consumers }}
           -  {{ regexReplaceAll "-" $.Release.Name "_" }}_{{ regexReplaceAll "-" . "_" | lower }}
         {{- end }}
 {{- end -}}

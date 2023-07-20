@@ -107,9 +107,9 @@ spec:
           - name: DIDCOMM_SERVICE_URL
             value: "https://{{ index .Values.ingress.applicationUrls 0 }}/prism-agent/didcomm"
           - name: PRISM_NODE_HOST
-            value: {{ .Values.vdr.host | quote }}
+            value: {{ .Values.vdrManager.host | quote }}
           - name: PRISM_NODE_PORT
-            value: {{ .Values.vdr.port | quote }}
+            value: {{ .Values.vdrManager.port | quote }}
           {{- if .Values.server.devMode }}
           - name: DEV_MODE
             value: "true"

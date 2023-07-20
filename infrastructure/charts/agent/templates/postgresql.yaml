@@ -1,7 +1,7 @@
 apiVersion: "acid.zalan.do/v1"
 kind: postgresql
 metadata:
-  name: "{{ .Values.database.postgres.managingTeam }}-prism-stack-postgres-cluster"
+  name: "{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster"
   namespace: {{ .Release.Namespace }}
   labels:
     {{ template "labels.common" . }}
@@ -9,7 +9,7 @@ spec:
   teamId: "{{ .Values.database.postgres.managingTeam }}"
   volume:
     size: "{{ .Values.database.postgres.databaseSize }}"
-  numberOfInstances: 2
+  numberOfInstances: "{{ .Values.database.postgres.numberOfInstances }}"
   users:
     castor-admin:
       - superuser
