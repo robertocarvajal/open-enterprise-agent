@@ -110,10 +110,9 @@ spec:
             value: {{ .Values.vdrManager.host | quote }}
           - name: PRISM_NODE_PORT
             value: {{ .Values.vdrManager.port | quote }}
-          {{- if .Values.server.devMode }}
           - name: DEV_MODE
-            value: "true"
-          {{- else }}
+            value: {{ .Values.server.devMode }}
+          {{- if .Values.server.useVault }}
           - name: VAULT_ADDR
             value: "http://{{ .Release.Namespace }}-vault.{{ .Release.Namespace }}:8200"
           - name: VAULT_TOKEN

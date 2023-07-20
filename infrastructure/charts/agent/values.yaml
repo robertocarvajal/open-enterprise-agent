@@ -26,6 +26,7 @@ server:
       memory: 512Mi
   additionalEnvVariables: []
   devMode: false
+  useVault: true
 
 database:
   postgres:
@@ -38,6 +39,7 @@ vdrManager:
   port: 50053
 
 vault:
+  enabled: true
   injector:
     enabled: false
   server:
