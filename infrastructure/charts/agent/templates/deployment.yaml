@@ -24,7 +24,7 @@ spec:
         command: ['sh', '-c', "until nc -z {{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}} 5432; do echo waiting for postgress-operator; sleep 2; done;"]
       containers:
       - name: prism-agent-server
-        image: "{{ .Values.server.image.repository }}/{{ .Values.server.image.tag }}: {{ .Values.server.image.version | default .Chart.AppVersion }}"
+        image: "{{ .Values.server.image.repository }}/{{ .Values.server.image.tag }}:{{ .Values.server.image.version | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.server.image.pullPolicy }}
         resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
