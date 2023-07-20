@@ -39,7 +39,6 @@ vdrManager:
   port: 50053
 
 vault:
-  enabled: true
   injector:
     enabled: false
   server:
