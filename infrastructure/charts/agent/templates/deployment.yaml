@@ -21,7 +21,7 @@ spec:
       initContainers:
       - name: wait-postgress-ready
         image: busybox
-        command: ['sh', '-c', "until nc -z {{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}} 5432; do echo waiting for postgress-operator; sleep 2; done;"]
+        command: ['sh', '-c', "until nc -z {{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}} 5432; do echo waiting for postgress-operator; sleep 2; done;"]
       containers:
       - name: prism-agent-server
         image: "{{ .Values.server.image.repository }}/{{ .Values.server.image.tag }}: {{ .Values.server.image.version }} | default .Chart.AppVersion }}"
@@ -33,7 +33,7 @@ spec:
         - containerPort: 8090
         env:
           - name: CASTOR_DB_HOST
-            value: "{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
+            value: "{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
           - name: CASTOR_DB_PORT
             value: "5432"
           - name: CASTOR_DB_NAME
@@ -41,17 +41,17 @@ spec:
           - name: CASTOR_DB_USER
             valueFrom:
               secretKeyRef:
-                name: castor-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: castor-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: username
                 optional: false
           - name: CASTOR_DB_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: castor-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: castor-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: password
                 optional: false
           - name: POLLUX_DB_HOST
-            value: "{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
+            value: "{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
           - name: POLLUX_DB_PORT
             value: "5432"
           - name: POLLUX_DB_NAME
@@ -59,17 +59,17 @@ spec:
           - name: POLLUX_DB_USER
             valueFrom:
               secretKeyRef:
-                name: pollux-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: pollux-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: username
                 optional: false
           - name: POLLUX_DB_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: pollux-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: pollux-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: password
                 optional: false
           - name: CONNECT_DB_HOST
-            value: "{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
+            value: "{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
           - name: CONNECT_DB_PORT
             value: "5432"
           - name: CONNECT_DB_NAME
@@ -77,17 +77,17 @@ spec:
           - name: CONNECT_DB_USER
             valueFrom:
               secretKeyRef:
-                name: connect-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: connect-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: username
                 optional: false
           - name: CONNECT_DB_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: connect-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: connect-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: password
                 optional: false
           - name: AGENT_DB_HOST
-            value: "{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
+            value: "{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.{{.Release.Namespace}}"
           - name: AGENT_DB_PORT
             value: "5432"
           - name: AGENT_DB_NAME
@@ -95,13 +95,13 @@ spec:
           - name: AGENT_DB_USER
             valueFrom:
               secretKeyRef:
-                name: agent-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: agent-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: username
                 optional: false
           - name: AGENT_DB_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: agent-admin.{{ .Values.database.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                name: agent-admin.{{ .Values.database.postgres.managingTeam }}-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
                 key: password
                 optional: false
           - name: DIDCOMM_SERVICE_URL
