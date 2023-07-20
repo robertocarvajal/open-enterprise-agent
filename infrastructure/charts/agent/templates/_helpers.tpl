@@ -1,13 +1,13 @@
 {{- define "cors" }}
-    {{- if .Values.cors.enabled -}}
+    {{- if .Values.ingress.cors.enabled }}
     - name: cors
       enable: true
-      {{- if .Values.cors.allow_origins }}
+      {{- if .Values.ingress.cors.allow_origins }}
       config:
-        allow_origins: {{ .Values.cors.allow_origins | quote }}
-      {{- end}}
-    {{- end -}}
-{{- end }}
+        allow_origins: {{ .Values.ingress.cors.allow_origins | quote }}
+      {{- end }}
+    {{- end }}
+{{- end -}}
 {{- define "consumer-restriction" }}
     - name: consumer-restriction
       enable: true
@@ -16,4 +16,7 @@
         {{- range .Values.consumers }}
           -  {{ regexReplaceAll "-" $.Release.Name "_" }}_{{ regexReplaceAll "-" . "_" | lower }}
         {{- end }}
-{{- end }}
+{{- end -}}
+{{- define "labels.common" -}}
+app.kubernetes.io/part-of: prism-agent
+{{- end -}}

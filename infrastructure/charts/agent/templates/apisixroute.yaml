@@ -1,18 +1,23 @@
+{{- if .Values.ingress.enabled }}
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
+  name: agent-route
   namespace: "{{ .Release.Namespace }}"
-  name: prism-agent-server
+  labels:
+    {{ template "labels.common" . }}
 spec:
   http:
-  - name: prism-agent-server
+  - name: agent-rule
     match:
       hosts:
-      - "{{ .Values.global.domainNamePrefix }}.atalaprism.io"
+      {{- range .Values.ingress.applicationUrls }}
+        - {{ . }}
+      {{- end }}
       paths:
       - /prism-agent/*
     backends:
-       - serviceName: prism-agent-server
+       - serviceName: agent-server-tapir-service
          servicePort: 8085
     authentication:
       enable: true
@@ -22,6 +27,11 @@ spec:
       enable: true
       config:
         regex_uri: ["^/prism-agent/(.*)","/$1"]
+    - name: uri-blocker
+      enable: true
+      config:
+        block_rules: ["_system/metrics"]
+        rejected_message: "access to metrics resource is not allowed from an external location"
     {{ template "cors" . }}
     {{ template "consumer-restriction" . }}
 
@@ -30,22 +40,89 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
+  name: agent-didcomm-route
   namespace: "{{ .Release.Namespace }}"
-  name: prism-agent-server-didcomm
+  labels:
+    {{ template "labels.common" . }}
 spec:
   http:
-  - name: prism-agent-server-didcomm
+  - name: agent-didcomm-rule
     match:
       hosts:
-      - "{{ .Values.global.domainNamePrefix }}.atalaprism.io"
+      {{- range .Values.ingress.applicationUrls }}
+        - {{ . }}
+      {{- end }}
       paths:
       - /prism-agent/didcomm*
     backends:
-       - serviceName: prism-agent-server-didcomm
-         servicePort: 8090
+      - serviceName: agent-server-didcomm-service
+        servicePort: 8090
     plugins:
     - name: proxy-rewrite
       enable: true
       config:
-        regex_uri: ["^/didcomm(.*)", "/$1"]
+        regex_uri: ["^/prism-agent/didcomm(.*)", "/$1"]
     {{ template "cors" . }}
+
+---
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: agent-schema-registry-route
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    {{ template "labels.common" . }}
+spec:
+  http:
+  - name: agent-schema-registry-rule
+    match:
+      hosts:
+      {{- range .Values.ingress.applicationUrls }}
+        - {{ . }}
+      {{- end }}
+      paths:
+      - /prism-agent/schema-registry/schemas/*
+      methods:
+      - GET
+    backends:
+      - serviceName: agent-server-tapir-service
+        servicePort: 8085
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/schema-registry/schemas/(.*)", "/schema-registry/schemas/$1"]
+    {{ template "cors" . }}
+
+---
+
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: agent-docs-route
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    {{ template "labels.common" . }}
+spec:
+  http:
+  - name: agent-docs-rule
+    match:
+      hosts:
+      {{- range .Values.ingress.applicationUrls }}
+        - {{ . }}
+      {{- end }}
+      paths:
+      - /prism-agent/docs/*
+    backends:
+      - serviceName: agent-server-tapir-service
+        servicePort: 8085
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/docs/(.*)","/docs/$1"]
+    {{ template "cors" . }}
+
+---
+{{- end }}
