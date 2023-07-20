@@ -33,7 +33,7 @@ database:
     databaseSize: 4Gi
     numberOfInstances: 2
 
-vdr:
+vdrManager:
   host: chart-base-node-service
   port: 50053
 
