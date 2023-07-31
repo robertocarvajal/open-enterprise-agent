@@ -8,21 +8,18 @@ import io.iohk.atala.agent.server.config.AppConfig
 import io.iohk.atala.agent.server.sql.DbConfig as AgentDbConfig
 import io.iohk.atala.agent.walletapi.crypto.Apollo
 import io.iohk.atala.agent.walletapi.service.WalletManagementService
-import io.iohk.atala.agent.walletapi.sql.JdbcDIDSecretStorage
-import io.iohk.atala.agent.walletapi.sql.JdbcWalletSecretStorage
-import io.iohk.atala.agent.walletapi.storage.DIDSecretStorage
-import io.iohk.atala.agent.walletapi.storage.WalletSecretStorage
+import io.iohk.atala.agent.walletapi.sql.{JdbcDIDSecretStorage, JdbcWalletSecretStorage}
+import io.iohk.atala.agent.walletapi.storage.{DIDSecretStorage, WalletSecretStorage}
 import io.iohk.atala.agent.walletapi.util.SeedResolver
-import io.iohk.atala.agent.walletapi.vault.VaultWalletSecretStorage
-import io.iohk.atala.agent.walletapi.vault.{VaultDIDSecretStorage, VaultKVClient, VaultKVClientImpl}
+import io.iohk.atala.agent.walletapi.vault.{VaultDIDSecretStorage, VaultKVClient, VaultKVClientImpl, VaultWalletSecretStorage}
 import io.iohk.atala.castor.core.service.DIDService
-import io.iohk.atala.connect.sql.repository.DbConfig as ConnectDbConfig
 import io.iohk.atala.iris.proto.service.IrisServiceGrpc
 import io.iohk.atala.iris.proto.service.IrisServiceGrpc.IrisServiceStub
 import io.iohk.atala.pollux.sql.repository.DbConfig as PolluxDbConfig
 import io.iohk.atala.pollux.vc.jwt.{PrismDidResolver, DidResolver as JwtDidResolver}
 import io.iohk.atala.prism.protos.node_api.NodeServiceGrpc
-import io.iohk.atala.shared.models.WalletAccessContext
+import io.iohk.atala.shared.db.{DbConfig, TransactorLayer}
+import io.iohk.atala.shared.models.{ContextRef, WalletAccessContext}
 import zio.*
 import zio.config.typesafe.TypesafeConfigSource
 import zio.config.{ReadError, read}
@@ -128,10 +125,10 @@ object RepoModule {
     polluxDbConfigLayer >>> transactorLayer
   }
 
-  val connectDbConfigLayer: TaskLayer[ConnectDbConfig] = {
+  val connectDbConfigLayer: TaskLayer[DbConfig] = {
     val dbConfigLayer = ZLayer.fromZIO {
       ZIO.service[AppConfig].map(_.connect.database) map { config =>
-        ConnectDbConfig(
+        DbConfig(
           username = config.username,
           password = config.password,
           jdbcUrl = s"jdbc:postgresql://${config.host}:${config.port}/${config.databaseName}",
@@ -142,14 +139,16 @@ object RepoModule {
     SystemModule.configLayer >>> dbConfigLayer
   }
 
-  val connectTransactorLayer: TaskLayer[Transactor[Task]] = {
+  val connectTransactorLayer: RLayer[ThreadLocal[ContextRef[WalletAccessContext]], Transactor[Task]] = {
     val transactorLayer = ZLayer.fromZIO {
-      ZIO.service[ConnectDbConfig].flatMap { config =>
-        Dispatcher.parallel[Task].allocated.map { case (dispatcher, _) =>
+      for {
+        config <- ZIO.service[DbConfig]
+        contextRef <- ZIO.service[ThreadLocal[ContextRef[WalletAccessContext]]]
+        dispatcher <- Dispatcher.parallel[Task].allocated.map { case (dispatcher, _) =>
           given Dispatcher[Task] = dispatcher
-          io.iohk.atala.connect.sql.repository.TransactorLayer.hikari[Task](config)
+          TransactorLayer.hikari[Task](config, contextRef)
         }
-      }
+      } yield dispatcher
     }.flatten
     connectDbConfigLayer >>> transactorLayer
   }
