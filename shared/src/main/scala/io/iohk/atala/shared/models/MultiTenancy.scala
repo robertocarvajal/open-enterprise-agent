@@ -21,4 +21,3 @@ object ContextRef {
       FiberRef.unsafe.make(ContextRef[WalletAccessContext](None))
     }
 }
-
