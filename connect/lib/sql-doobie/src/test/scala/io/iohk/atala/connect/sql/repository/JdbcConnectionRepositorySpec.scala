@@ -3,8 +3,9 @@ package io.iohk.atala.connect.sql.repository
 import cats.effect.std.Dispatcher
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import doobie.util.transactor.Transactor
-import io.iohk.atala.connect.core.repository.ConnectionRepository
-import io.iohk.atala.connect.core.repository.ConnectionRepositorySpecSuite
+import io.iohk.atala.connect.core.repository.{ConnectionRepository, ConnectionRepositorySpecSuite}
+import io.iohk.atala.shared.db.{DbConfig, TransactorLayer}
+import io.iohk.atala.shared.models.ContextRef
 import io.iohk.atala.test.container.PostgresLayer.postgresLayer
 import zio.*
 import zio.interop.catz.*
@@ -19,16 +20,23 @@ object JdbcConnectionRepositorySpec extends ZIOSpecDefault {
     } yield DbConfig(postgres.username, postgres.password, postgres.jdbcUrl)
   )
   private val transactorLayer = ZLayer.fromZIO {
-    ZIO.service[DbConfig].flatMap { config =>
-      Dispatcher[Task].allocated.map { case (dispatcher, _) =>
+    for {
+      config <- ZIO.service[DbConfig]
+      wc <- Unsafe.unsafe(implicit unsafe => ContextRef.walletAccessContext.asThreadLocal)
+      dispatcher <- Dispatcher[Task].allocated.map { case (dispatcher, _) =>
         given Dispatcher[Task] = dispatcher
-        TransactorLayer.hikari[Task](config)
+        TransactorLayer.hikari[Task](config, wc)
       }
-    }
+    } yield dispatcher
   }.flatten
   private val testEnvironmentLayer = zio.test.testEnvironment ++ pgLayer ++
     (pgLayer >>> dbConfig >>> transactorLayer >>> JdbcConnectionRepository.layer) ++
     (pgLayer >>> dbConfig >>> Migrations.layer)
+
+  override def runtime: Runtime[Any] =
+    Unsafe.unsafe { implicit unsafe =>
+      Runtime.unsafe.fromLayer(Runtime.enableCurrentFiber)
+    }
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
     (suite("JDBC Connection Repository test suite")(
