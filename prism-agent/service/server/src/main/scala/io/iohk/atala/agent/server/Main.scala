@@ -3,10 +3,12 @@ package io.iohk.atala.agent.server
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton
 import io.iohk.atala.agent.server.http.ZioHttpClient
 import io.iohk.atala.agent.server.sql.Migrations as AgentMigrations
-import io.iohk.atala.agent.walletapi.service.WalletManagementServiceImpl
-import io.iohk.atala.agent.walletapi.service.{ManagedDIDService, ManagedDIDServiceWithEventNotificationImpl}
-import io.iohk.atala.agent.walletapi.sql.JdbcDIDNonSecretStorage
-import io.iohk.atala.agent.walletapi.sql.JdbcWalletNonSecretStorage
+import io.iohk.atala.agent.walletapi.service.{
+  ManagedDIDService,
+  ManagedDIDServiceWithEventNotificationImpl,
+  WalletManagementServiceImpl
+}
+import io.iohk.atala.agent.walletapi.sql.{JdbcDIDNonSecretStorage, JdbcWalletNonSecretStorage}
 import io.iohk.atala.castor.controller.{DIDControllerImpl, DIDRegistrarControllerImpl}
 import io.iohk.atala.castor.core.service.DIDServiceImpl
 import io.iohk.atala.castor.core.util.DIDOperationValidator
@@ -31,7 +33,7 @@ import io.iohk.atala.pollux.sql.repository.{
 }
 import io.iohk.atala.presentproof.controller.PresentProofControllerImpl
 import io.iohk.atala.resolvers.DIDResolver
-import io.iohk.atala.shared.models.WalletAccessContext
+import io.iohk.atala.shared.models.{ContextRef, WalletAccessContext}
 import io.iohk.atala.system.controller.SystemControllerImpl
 import io.micrometer.prometheus.{PrometheusConfig, PrometheusMeterRegistry}
 import zio.*
@@ -63,6 +65,13 @@ object MainApp extends ZIOAppDefault {
     _ <- ZIO.serviceWithZIO[ConnectMigrations](_.migrate)
     _ <- ZIO.serviceWithZIO[AgentMigrations](_.migrate)
   } yield ()
+
+  override def runtime: Runtime[Any] =
+    Unsafe.unsafe { implicit unsafe =>
+      // Instructs the ZIO runtime system to store the current fiber inside a ThreadLocal
+      // whenever a fiber begins executing on a thread.
+      Runtime.unsafe.fromLayer(Runtime.enableCurrentFiber)
+    }
 
   override def run: ZIO[Any, Throwable, Unit] = {
 
@@ -101,6 +110,8 @@ object MainApp extends ZIOAppDefault {
       _ <- ZIO.logInfo(s"DIDComm Service port => $didCommServicePort")
 
       _ <- migrations
+
+      walletAccessContext <- Unsafe.unsafe(implicit unsafe => ContextRef.walletAccessContext.asThreadLocal)
 
       app <- PrismAgentApp
         .run(didCommServicePort)
@@ -158,7 +169,8 @@ object MainApp extends ZIOAppDefault {
           Client.default,
           Scope.default,
           // FIXME: Remove when support dynamic wallet. Temporarily added to make some components work
-          AppModule.defaultWalletContext
+          AppModule.defaultWalletContext,
+          ZLayer.succeed(walletAccessContext)
         )
     } yield app
 
