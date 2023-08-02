@@ -130,12 +130,26 @@ object RepoModule {
     polluxDbConfigLayer >>> transactorLayer
   }
 
-  val connectDbConfigLayer: TaskLayer[DbConfig] = {
+  val connectMigrationsDbConfigLayer: TaskLayer[DbConfig] = {
     val dbConfigLayer = ZLayer.fromZIO {
       ZIO.service[AppConfig].map(_.connect.database) map { config =>
         DbConfig(
           username = config.username,
           password = config.password,
+          jdbcUrl = s"jdbc:postgresql://${config.host}:${config.port}/${config.databaseName}",
+          awaitConnectionThreads = config.awaitConnectionThreads
+        )
+      }
+    }
+    SystemModule.configLayer >>> dbConfigLayer
+  }
+
+  val connectDbConfigLayer: TaskLayer[DbConfig] = {
+    val dbConfigLayer = ZLayer.fromZIO {
+      ZIO.service[AppConfig].map(_.connect.database) map { config =>
+        DbConfig(
+          username = config.appUsername,
+          password = config.appPassword,
           jdbcUrl = s"jdbc:postgresql://${config.host}:${config.port}/${config.databaseName}",
           awaitConnectionThreads = config.awaitConnectionThreads
         )

@@ -52,6 +52,8 @@ final case class DatabaseConfig(
     databaseName: String,
     username: String,
     password: String,
+    appUsername: String,
+    appPassword: String,
     awaitConnectionThreads: Int
 )
 
