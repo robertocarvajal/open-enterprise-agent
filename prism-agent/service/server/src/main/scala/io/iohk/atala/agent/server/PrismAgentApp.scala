@@ -4,23 +4,20 @@ import io.iohk.atala.agent.notification.WebhookPublisher
 import io.iohk.atala.agent.server.config.AppConfig
 import io.iohk.atala.agent.server.http.{ZHttp4sBlazeServer, ZHttpEndpoints}
 import io.iohk.atala.agent.server.jobs.{BackgroundJobs, ConnectBackgroundJobs}
-import io.iohk.atala.agent.walletapi.service.ManagedDIDService
-import io.iohk.atala.agent.walletapi.service.WalletManagementService
+import io.iohk.atala.agent.walletapi.service.{ManagedDIDService, WalletManagementService}
 import io.iohk.atala.castor.controller.{DIDRegistrarServerEndpoints, DIDServerEndpoints}
 import io.iohk.atala.castor.core.service.DIDService
 import io.iohk.atala.connect.controller.ConnectionServerEndpoints
-import io.iohk.atala.connect.core.service.ConnectionService
+import io.iohk.atala.connect.core.service.{ConnectionService, ConnectionServiceImpl}
+import io.iohk.atala.connect.sql.repository.JdbcConnectionRepository
 import io.iohk.atala.issue.controller.IssueServerEndpoints
-import io.iohk.atala.mercury.DidOps
-import io.iohk.atala.mercury.HttpClient
-import io.iohk.atala.pollux.core.service.CredentialService
-import io.iohk.atala.pollux.core.service.PresentationService
-import io.iohk.atala.pollux.credentialschema.SchemaRegistryServerEndpoints
-import io.iohk.atala.pollux.credentialschema.VerificationPolicyServerEndpoints
+import io.iohk.atala.mercury.{DidOps, HttpClient}
+import io.iohk.atala.pollux.core.service.{CredentialService, PresentationService}
+import io.iohk.atala.pollux.credentialschema.{SchemaRegistryServerEndpoints, VerificationPolicyServerEndpoints}
 import io.iohk.atala.pollux.vc.jwt.DidResolver as JwtDidResolver
 import io.iohk.atala.presentproof.controller.PresentProofServerEndpoints
 import io.iohk.atala.resolvers.DIDResolver
-import io.iohk.atala.shared.models.WalletAccessContext
+import io.iohk.atala.shared.models.{ContextRef, WalletAccessContext}
 import io.iohk.atala.system.controller.SystemServerEndpoints
 import zio.*
 
@@ -77,10 +74,11 @@ object PrismAgentApp {
     } yield ()
 
   private val connectDidCommExchangesJob: RIO[
-    AppConfig & DidOps & DIDResolver & HttpClient & ConnectionService & ManagedDIDService & WalletManagementService,
+    AppConfig & DidOps & DIDResolver & HttpClient & ManagedDIDService & WalletManagementService &
+      ThreadLocal[ContextRef[WalletAccessContext]],
     Unit
-  ] =
-    for {
+  ] = {
+    val result = for {
       config <- ZIO.service[AppConfig]
       _ <- ZIO
         .serviceWithZIO[WalletManagementService](_.listWallets)
@@ -93,6 +91,13 @@ object PrismAgentApp {
         .repeat(Schedule.spaced(config.connect.connectBgJobRecurrenceDelay))
         .unit
     } yield ()
+    val adminConnectionServiceLayer =
+      RepoModule.connectMigrationsDbConfigLayer >>>
+        RepoModule.connectTransactorLayer >>>
+        JdbcConnectionRepository.layer >>>
+        ConnectionServiceImpl.layer
+    result.provideSomeLayer(adminConnectionServiceLayer)
+  }
 
   private val syncDIDPublicationStateFromDltJob: URIO[ManagedDIDService & WalletManagementService, Unit] =
     ZIO

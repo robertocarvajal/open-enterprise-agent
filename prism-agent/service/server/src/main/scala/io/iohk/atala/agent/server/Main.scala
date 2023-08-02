@@ -158,7 +158,7 @@ object MainApp extends ZIOAppDefault {
           RepoModule.agentTransactorLayer >>> JdbcDIDNonSecretStorage.layer,
           RepoModule.agentTransactorLayer >>> JdbcWalletNonSecretStorage.layer,
           RepoModule.allSecretStorageLayer,
-          RepoModule.connectTransactorLayer >>> JdbcConnectionRepository.layer,
+          RepoModule.connectDbConfigLayer >>> RepoModule.connectTransactorLayer >>> JdbcConnectionRepository.layer,
           RepoModule.polluxTransactorLayer >>> JdbcCredentialRepository.layer,
           RepoModule.polluxTransactorLayer >>> JdbcCredentialSchemaRepository.layer,
           RepoModule.polluxTransactorLayer >>> JdbcPresentationRepository.layer,

@@ -158,8 +158,8 @@ object RepoModule {
     SystemModule.configLayer >>> dbConfigLayer
   }
 
-  val connectTransactorLayer: RLayer[ThreadLocal[ContextRef[WalletAccessContext]], Transactor[Task]] = {
-    val transactorLayer = ZLayer.fromZIO {
+  val connectTransactorLayer: RLayer[DbConfig & ThreadLocal[ContextRef[WalletAccessContext]], Transactor[Task]] =
+    ZLayer.fromZIO {
       for {
         config <- ZIO.service[DbConfig]
         contextRef <- ZIO.service[ThreadLocal[ContextRef[WalletAccessContext]]]
@@ -169,8 +169,6 @@ object RepoModule {
         }
       } yield dispatcher
     }.flatten
-    connectDbConfigLayer >>> transactorLayer
-  }
 
   val agentDbConfigLayer: TaskLayer[AgentDbConfig] = {
     val dbConfigLayer = ZLayer.fromZIO {
