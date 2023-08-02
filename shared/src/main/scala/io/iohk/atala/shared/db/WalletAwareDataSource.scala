@@ -14,7 +14,7 @@ class WalletAwareDataSource(
     contextRef.get().context match
       case Some(wac) =>
         val stmt = conn.createStatement()
-        stmt.execute(s"SET app.walletId = '${wac.walletId}'")
+        stmt.execute(s"SET app.current_wallet_id = '${wac.walletId}'")
         conn
       case None => conn
   }
