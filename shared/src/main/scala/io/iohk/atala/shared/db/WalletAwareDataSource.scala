@@ -9,13 +9,18 @@ class WalletAwareDataSource(
     hikariConfig: HikariConfig,
     contextRef: ThreadLocal[ContextRef[WalletAccessContext]]
 ) extends HikariDataSource(hikariConfig) {
+  private val VariableName = "app.current_wallet_id"
+
   override def getConnection: Connection = {
     val conn = super.getConnection
     contextRef.get().context match
       case Some(wac) =>
         val stmt = conn.createStatement()
-        stmt.execute(s"SET app.current_wallet_id = '${wac.walletId}'")
+        stmt.execute(s"SET $VariableName = '${wac.walletId}'")
         conn
-      case None => conn
+      case None =>
+        val stmt = conn.createStatement()
+        stmt.execute(s"RESET $VariableName")
+        conn
   }
 }
