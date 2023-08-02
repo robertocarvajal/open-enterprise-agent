@@ -5,7 +5,8 @@ import io.circe.parser.*
 import io.iohk.atala.agent.walletapi.model.error.DIDSecretStorageError
 import io.iohk.atala.agent.walletapi.service.ManagedDIDService
 import io.iohk.atala.connect.core.model.error.ConnectionServiceError
-import io.iohk.atala.connect.core.service.ConnectionService
+import io.iohk.atala.connect.core.service.{ConnectionService, ConnectionServiceImpl}
+import io.iohk.atala.connect.sql.repository.JdbcConnectionRepository
 import io.iohk.atala.mercury.*
 import io.iohk.atala.mercury.DidOps.*
 import io.iohk.atala.mercury.model.*
@@ -17,12 +18,12 @@ import io.iohk.atala.mercury.protocol.trustping.TrustPing
 import io.iohk.atala.pollux.core.model.error.{CredentialServiceError, PresentationError}
 import io.iohk.atala.pollux.core.service.{CredentialService, PresentationService}
 import io.iohk.atala.resolvers.DIDResolver
+import io.iohk.atala.shared.models.{ContextRef, WalletAccessContext}
 import zio.*
 import zio.http.*
 import zio.http.model.*
 
 import java.io.IOException
-import io.iohk.atala.shared.models.WalletAccessContext
 
 object DidCommHttpServer {
   def run(didCommServicePort: Int) = {
@@ -40,35 +41,43 @@ object DidCommHttpServer {
   }
 
   private def didCommServiceEndpoint: HttpApp[
-    DidOps & DidAgent & CredentialService & PresentationService & ConnectionService & ManagedDIDService & HttpClient &
-      DidAgent & DIDResolver & WalletAccessContext,
+    DidOps & DidAgent & CredentialService & PresentationService & ManagedDIDService & HttpClient & DidAgent &
+      DIDResolver & WalletAccessContext & ThreadLocal[ContextRef[WalletAccessContext]],
     Throwable
-  ] = Http.collectZIO[Request] {
-    case Method.GET -> !! / "did" =>
-      for {
-        didCommService <- ZIO.service[DidAgent]
-        str = didCommService.id.value
-      } yield (Response.text(str))
+  ] = {
+    val effect = Http.collectZIO[Request] {
+      case Method.GET -> !! / "did" =>
+        for {
+          didCommService <- ZIO.service[DidAgent]
+          str = didCommService.id.value
+        } yield (Response.text(str))
 
-    case req @ Method.POST -> !!
-        if req.headersAsList
-          .exists(h =>
-            h.key.toString.equalsIgnoreCase("content-type") &&
-              h.value.toString.equalsIgnoreCase(MediaTypes.contentTypeEncrypted)
-          ) =>
-      val result = for {
-        data <- req.body.asString
-        _ <- webServerProgram(data)
-      } yield Response.ok
+      case req @ Method.POST -> !!
+          if req.headersAsList
+            .exists(h =>
+              h.key.toString.equalsIgnoreCase("content-type") &&
+                h.value.toString.equalsIgnoreCase(MediaTypes.contentTypeEncrypted)
+            ) =>
+        val result = for {
+          data <- req.body.asString
+          _ <- webServerProgram(data)
+        } yield Response.ok
 
-      result
-        .tapError { error =>
-          ZIO.logErrorCause("Fail to POST form webServerProgram", Cause.fail(error))
-        }
-        .mapError {
-          case ex: DIDSecretStorageError => ex
-          case ex: MercuryThrowable      => mercuryErrorAsThrowable(ex)
-        }
+        result
+          .tapError { error =>
+            ZIO.logErrorCause("DIDComm request processing failure", Cause.fail(error))
+          }
+          .mapError {
+            case ex: DIDSecretStorageError => ex
+            case ex: MercuryThrowable      => mercuryErrorAsThrowable(ex)
+          }
+    }
+    val adminConnectionServiceLayer =
+      RepoModule.connectMigrationsDbConfigLayer >>>
+        RepoModule.connectTransactorLayer >>>
+        JdbcConnectionRepository.layer >>>
+        ConnectionServiceImpl.layer
+    effect.provideSomeLayer(adminConnectionServiceLayer)
   }
 
   private[this] def extractFirstRecipientDid(jsonMessage: String): IO[ParsingFailure | DecodingFailure, String] = {
