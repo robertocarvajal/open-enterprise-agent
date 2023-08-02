@@ -55,7 +55,8 @@ class JdbcConnectionRepository(xa: Transactor[Task]) extends ConnectionRepositor
         |   invitation,
         |   meta_retries,
         |   meta_next_retry,
-        |   meta_last_failure
+        |   meta_last_failure,
+        |   wallet_id
         | ) values (
         |   ${record.id},
         |   ${record.createdAt},
@@ -67,7 +68,8 @@ class JdbcConnectionRepository(xa: Transactor[Task]) extends ConnectionRepositor
         |   ${record.invitation},
         |   ${record.metaRetries},
         |   ${record.metaNextRetry},
-        |   ${record.metaLastFailure}
+        |   ${record.metaLastFailure},
+        |   current_setting('app.current_wallet_id')
         | )
         """.stripMargin.update
 
