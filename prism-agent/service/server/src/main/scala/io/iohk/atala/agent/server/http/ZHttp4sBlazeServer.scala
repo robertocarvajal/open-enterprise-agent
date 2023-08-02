@@ -1,14 +1,18 @@
 package io.iohk.atala.agent.server.http
 
 import io.iohk.atala.api.http.ErrorResponse
+import io.iohk.atala.shared.models.{ContextRef, WalletAccessContext, WalletId}
 import io.iohk.atala.system.controller.SystemEndpoints
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import org.http4s.*
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.server.Router
 import sttp.tapir.*
+import sttp.tapir.model.ServerRequest
 import sttp.tapir.server.http4s.Http4sServerOptions
 import sttp.tapir.server.http4s.ztapir.ZHttp4sServerInterpreter
+import sttp.tapir.server.interceptor.RequestInterceptor.RequestResultEffectTransform
+import sttp.tapir.server.interceptor.{RequestInterceptor, RequestResult}
 import sttp.tapir.server.metrics.prometheus.PrometheusMetrics
 import sttp.tapir.ztapir.ZServerEndpoint
 import zio.*
@@ -19,6 +23,14 @@ class ZHttp4sBlazeServer(micrometerRegistry: PrometheusMeterRegistry) {
   private val tapirPrometheusMetricsZIO: Task[PrometheusMetrics[Task]] = ZIO.attempt {
     PrometheusMetrics.default[Task](registry = micrometerRegistry.getPrometheusRegistry)
   }
+
+  private val walletIdInterceptor = RequestInterceptor.transformResultEffect(new RequestResultEffectTransform[Task] {
+    override def apply[B](request: ServerRequest, result: Task[RequestResult[B]]): Task[RequestResult[B]] = {
+      ContextRef.walletAccessContext.update(
+        _.copy(Some(WalletAccessContext(WalletId.fromInt(request.queryParameters.get("walletId").get.toInt))))
+      ) *> result
+    }
+  })
 
   private val serverOptionsZIO: ZIO[PrometheusMetrics[Task], Throwable, Http4sServerOptions[Task]] = for {
     srv <- ZIO.service[PrometheusMetrics[Task]]
@@ -31,6 +43,7 @@ class ZHttp4sBlazeServer(micrometerRegistry: PrometheusMeterRegistry) {
             ignoreEndpoints = Seq(SystemEndpoints.metrics)
           )
         )
+        .prependInterceptor(walletIdInterceptor)
         .options
     }
   } yield options
