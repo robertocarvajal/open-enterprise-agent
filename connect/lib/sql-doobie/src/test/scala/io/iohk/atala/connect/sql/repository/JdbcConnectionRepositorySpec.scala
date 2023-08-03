@@ -5,7 +5,7 @@ import com.dimafeng.testcontainers.PostgreSQLContainer
 import doobie.util.transactor.Transactor
 import io.iohk.atala.connect.core.repository.{ConnectionRepository, ConnectionRepositorySpecSuite}
 import io.iohk.atala.shared.db.{DbConfig, TransactorLayer}
-import io.iohk.atala.shared.models.ContextRef
+import io.iohk.atala.shared.models.{ContextRef, WalletAccessContext, WalletId}
 import io.iohk.atala.test.container.PostgresLayer.postgresLayer
 import zio.*
 import zio.interop.catz.*
@@ -22,26 +22,25 @@ object JdbcConnectionRepositorySpec extends ZIOSpecDefault {
   private val transactorLayer = ZLayer.fromZIO {
     for {
       config <- ZIO.service[DbConfig]
-      wc <- Unsafe.unsafe(implicit unsafe => ContextRef.walletAccessContext.asThreadLocal)
+      contextRef <- ZIO.service[ThreadLocal[ContextRef[WalletAccessContext]]]
       dispatcher <- Dispatcher[Task].allocated.map { case (dispatcher, _) =>
         given Dispatcher[Task] = dispatcher
-        TransactorLayer.hikari[Task](config, wc)
+        TransactorLayer.hikari[Task](config, contextRef)
       }
     } yield dispatcher
   }.flatten
-  private val testEnvironmentLayer = zio.test.testEnvironment ++ pgLayer ++
-    (pgLayer >>> dbConfig >>> transactorLayer >>> JdbcConnectionRepository.layer) ++
+  private val wacThreadLocal =
+    ZLayer.fromZIO(Unsafe.unsafe(implicit unsafe => ContextRef.walletAccessContext.asThreadLocal))
+  private val testEnvironmentLayer = pgLayer ++
+    (((pgLayer >>> dbConfig) ++ wacThreadLocal) >>> transactorLayer >>> JdbcConnectionRepository.layer) ++
     (pgLayer >>> dbConfig >>> Migrations.layer)
 
-  override def runtime: Runtime[Any] =
-    Unsafe.unsafe { implicit unsafe =>
-      Runtime.unsafe.fromLayer(Runtime.enableCurrentFiber)
-    }
-
-  override def spec: Spec[TestEnvironment with Scope, Any] =
+  override def spec: Spec[TestEnvironment with Scope, Any] = {
     (suite("JDBC Connection Repository test suite")(
       ConnectionRepositorySpecSuite.testSuite
     ) @@ TestAspect.sequential @@ TestAspect.before(
-      ZIO.serviceWithZIO[Migrations](_.migrate)
-    )).provide(testEnvironmentLayer)
+      ZIO.serviceWithZIO[Migrations](_.migrate) *>
+        ContextRef.walletAccessContext.update(_.copy(Some(WalletAccessContext(WalletId.random))))
+    )).provide(testEnvironmentLayer ++ Runtime.enableCurrentFiber)
+  }
 }
