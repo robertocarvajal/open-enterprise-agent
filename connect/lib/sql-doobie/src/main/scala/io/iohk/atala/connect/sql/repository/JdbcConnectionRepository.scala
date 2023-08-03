@@ -69,7 +69,7 @@ class JdbcConnectionRepository(xa: Transactor[Task]) extends ConnectionRepositor
         |   ${record.metaRetries},
         |   ${record.metaNextRetry},
         |   ${record.metaLastFailure},
-        |   current_setting('app.current_wallet_id')
+        |   current_setting('app.current_wallet_id')::UUID
         | )
         """.stripMargin.update
 

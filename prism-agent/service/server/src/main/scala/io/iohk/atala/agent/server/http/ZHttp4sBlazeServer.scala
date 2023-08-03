@@ -18,6 +18,8 @@ import sttp.tapir.ztapir.ZServerEndpoint
 import zio.*
 import zio.interop.catz.*
 
+import java.util.UUID
+
 class ZHttp4sBlazeServer(micrometerRegistry: PrometheusMeterRegistry) {
 
   private val tapirPrometheusMetricsZIO: Task[PrometheusMetrics[Task]] = ZIO.attempt {
@@ -26,9 +28,10 @@ class ZHttp4sBlazeServer(micrometerRegistry: PrometheusMeterRegistry) {
 
   private val walletIdInterceptor = RequestInterceptor.transformResultEffect(new RequestResultEffectTransform[Task] {
     override def apply[B](request: ServerRequest, result: Task[RequestResult[B]]): Task[RequestResult[B]] = {
-      ContextRef.walletAccessContext.update(
-        _.copy(Some(WalletAccessContext(WalletId.fromInt(request.queryParameters.get("walletId").get.toInt))))
-      ) *> result
+      ContextRef.walletAccessContext.update { cr =>
+        val uuid = UUID.fromString(request.queryParameters.get("walletId").get)
+        cr.copy(Some(WalletAccessContext(WalletId.fromUUID(uuid))))
+      } *> result
     }
   })
 
