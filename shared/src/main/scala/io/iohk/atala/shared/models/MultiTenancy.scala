@@ -1,14 +1,16 @@
 package io.iohk.atala.shared.models
 
 import zio.{FiberRef, Unsafe}
-
+import java.util.UUID
 import scala.language.implicitConversions
 
-opaque type WalletId = Int
+opaque type WalletId = UUID
 
 object WalletId {
-  def fromInt(id: Int): WalletId = id
-  extension (id: WalletId) { def toInt: Int = id }
+  def fromUUID(uuid: UUID): WalletId = uuid
+  def random: WalletId = fromUUID(UUID.randomUUID())
+
+  extension (id: WalletId) { def toUUID: UUID = id }
 }
 
 final case class WalletAccessContext(walletId: WalletId)
