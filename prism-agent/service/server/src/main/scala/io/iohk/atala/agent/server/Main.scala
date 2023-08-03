@@ -111,8 +111,6 @@ object MainApp extends ZIOAppDefault {
 
       _ <- migrations
 
-      walletAccessContext <- Unsafe.unsafe(implicit unsafe => ContextRef.walletAccessContext.asThreadLocal)
-
       app <- PrismAgentApp
         .run(didCommServicePort)
         .provide(
@@ -170,7 +168,7 @@ object MainApp extends ZIOAppDefault {
           Scope.default,
           // FIXME: Remove when support dynamic wallet. Temporarily added to make some components work
           AppModule.defaultWalletContext,
-          ZLayer.succeed(walletAccessContext)
+          ZLayer.fromZIO(Unsafe.unsafe(implicit unsafe => ContextRef.walletAccessContext.asThreadLocal))
         )
     } yield app
 
