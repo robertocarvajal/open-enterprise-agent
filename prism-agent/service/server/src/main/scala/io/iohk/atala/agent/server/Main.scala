@@ -66,13 +66,6 @@ object MainApp extends ZIOAppDefault {
     _ <- ZIO.serviceWithZIO[AgentMigrations](_.migrate)
   } yield ()
 
-//  override def runtime: Runtime[Any] =
-//    Unsafe.unsafe { implicit unsafe =>
-//      // Instructs the ZIO runtime system to store the current fiber inside a ThreadLocal
-//      // whenever a fiber begins executing on a thread.
-//      Runtime.unsafe.fromLayer(Runtime.enableCurrentFiber)
-//    }
-
   override def run: ZIO[Any, Throwable, Unit] = {
 
     val app = for {
