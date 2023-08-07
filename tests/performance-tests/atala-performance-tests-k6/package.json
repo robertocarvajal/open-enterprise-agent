@@ -1,10 +1,10 @@
 {
-  "name": "typescript",
+  "name": "@atala/prism-cloud-agent-performance-tests",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "ssh://git@github.com/k6io/example-typescript.git",
-  "author": "Simon Aronsson <simme@k6.io>",
-  "license": "MIT",
+  "repository": "https://github.com/input-output-hk/atala-prism-building-blocks",
+  "author": "Anton Baliasnikov",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@babel/core": "7.13.16",
     "@babel/plugin-proposal-class-properties": "7.13.0",
@@ -25,7 +25,6 @@
     "start": "webpack"
   },
   "dependencies": {
-    "@input-output-hk/prism-typescript-client": "1.9.2",
-    "uuid": "^9.0.0"
+    "@input-output-hk/prism-typescript-client": "1.9.2"
   }
 }

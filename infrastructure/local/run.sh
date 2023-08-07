@@ -109,7 +109,7 @@ echo "--------------------------------------"
 echo "Starting stack using docker compose"
 echo "--------------------------------------"
 
-PORT=${PORT} NETWORK=${NETWORK} WEBHOOK_URL=${WEBHOOK_URL} WEBHOOK_API_KEY=${WEBHOOK_API_KEY} docker compose \
+PORT=${PORT} NETWORK=${NETWORK} docker compose \
 	-p ${NAME} \
 	-f ${SCRIPT_DIR}/../shared/docker-compose.yml \
 	--env-file ${ENV_FILE} ${DEBUG} up ${BACKGROUND} ${WAIT}
