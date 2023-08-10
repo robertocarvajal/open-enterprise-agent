@@ -35,7 +35,7 @@ export let options: Options = {
   thresholds: {
     http_req_failed: [{
       threshold: 'rate==0',
-      // abortOnFail: true,
+      abortOnFail: false,
     }],
     // http_req_duration: ['p(95)<=500'],
     checks: ['rate==1'],

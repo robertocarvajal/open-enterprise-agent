@@ -5,17 +5,44 @@ import { CredentialSchemaResponse } from '@input-output-hk/prism-typescript-clie
 
 export let options: Options = {
   scenarios: {
-    smoke: {
-      executor: 'constant-vus',
-      vus: 5,
-      duration: "3m",
-    },
+    // smoke: {
+    //   executor: 'constant-vus',
+    //   vus: 20,
+    //   duration: "10m",
+    //   gracefulStop: "2m",
+    // },
+    acapy: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '2m', target: 10 },
+        { duration: '2m', target: 10 },
+        { duration: '3m', target: 0 },
+        // { duration: '1m', target: 150 },
+        // { duration: '1m', target: 150 },
+        // { duration: '1m', target: 0 },
+        // { duration: '1m', target: 200 },
+        // { duration: '1m', target: 200 },
+        // { duration: '1m', target: 0 },
+        // { duration: '1m', target: 250 },
+        // { duration: '1m', target: 250 },
+        // { duration: '1m', target: 0 },
+        // { duration: '1m', target: 300 },
+        // { duration: '1m', target: 300 },
+        // { duration: '1m', target: 0 },
+      ],
+      gracefulRampDown: '10m',
+    }
   },
   thresholds: {
     http_req_failed: [{
       threshold: 'rate==0',
-      abortOnFail: true,
+      // abortOnFail: true,
     }],
+    'group_duration{group:::Holder connects with Issuer}': ['max >= 0'],
+    'group_duration{group:::Issuer creates credential offer for Holder}': ['max >= 0'],
+    'group_duration{group:::Holder connects with Verifier}': ['max >= 0'],
+    'group_duration{group:::Verifier requests proof from Holder}': ['max >= 0'],
     http_req_duration: ['p(95)<=500'],
     checks: ['rate==1'],
   },
@@ -57,7 +84,7 @@ export default (data: { issuerDid: string; holderDid: string; issuerSchema: Cred
 
   group('Issuer creates credential offer for Holder', function () {
     issuer.createCredentialOffer();
-    issuer.waitForCredentialOfferToBeSent();
+    // issuer.waitForCredentialOfferToBeSent();
     holder.waitAndAcceptCredentialOffer(issuer.credential!.thid);
     issuer.receiveCredentialRequest();
     issuer.issueCredential();
