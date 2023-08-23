@@ -18,3 +18,5 @@ target/
 **.env.*
 workspace.json
 docs/architecture/structurizr/.structurizr/
+.direnv
+.std
