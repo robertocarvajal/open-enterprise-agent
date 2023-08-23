@@ -1,0 +1,31 @@
+resources:
+  - inflated.yaml
+# - ../agent
+  # - ./inflated.yaml
+# - ../../base/output.yaml
+# - /home/kranium/git/github.com/input-output-hk/atala-prism-building-blocks/infrastructure
+patches:
+- path: patch-deployment.yaml
+  target:
+    kind: Deployment
+    version: apps/v1
+# - path: patch-statefulset.yaml
+#   target:
+#     kind: StatefulSet
+#     version: apps/v1
+# - path: patch-daemonset.yaml
+#   target:
+#     kind: DaemonSet
+#     version: apps/v1
+# - path: patch-job.yaml
+#   target:
+#     kind: Job
+#     version: batch/v1
+# - path: patch-cronjob.yaml
+#   target:
+#     kind: CronJob
+#     version: batch/v1beta1
+# - path: patch-replicaset.yaml
+#   target:
+#     kind: ReplicaSet
+#     version: apps/v1

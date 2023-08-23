@@ -1,0 +1,885 @@
+---
+# Source: prism-agent/charts/vault/templates/pdb.yaml
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: performance-test-vault
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      app.kubernetes.io/instance: performance-test
+---
+# Source: prism-agent/charts/vault/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: performance-test-vault
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: prism-agent/charts/vault/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: performance-test-vault-tls
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+data:
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFVENDQWZtZ0F3SUJBZ0lRY3dQdStiYmVtVXlaVnBVK3FQaDdBekFOQmdrcWhraUc5dzBCQVFzRkFEQVQKTVJFd0R3WURWUVFERXdoMllYVnNkQzFqWVRBZUZ3MHlNekE0TWpFd09EVXpOREJhRncweU5EQTRNakF3T0RVegpOREJhTUJNeEVUQVBCZ05WQkFNVENIWmhkV3gwTFdOaE1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBCk1JSUJDZ0tDQVFFQXdTeXRRcGN3Z0YzVTRBWFNpZ0xweGRJdGZKa1pRNi9PTGhFREtvb056UmU4MFZORTY0MHcKUHRETXlkTFMzOUNIV1FlNWw1UTBrNWVDMXU1ZmM1VjAvKzZsT1ZGekpidFpRZGdYanRxQit0VS9DaFBkKzQ0QQpOQ3FLUEZkZVpDakliNk9YL1BENEU1ZjNoQk41b3ZrU0xQMWV6dmdpb1BPSlhndDlwVnFBMnZObUZVWWZNUisvClA4dS9QVjExazF5K2p3eEE5QmlKOUM0bWdhMjNic3F1MDVxQjFqMDk0LzZRa0kyVDMrU3hSWWJzbFRwK1FrYS8Kd1gzejBKRFVQUHdZMEZELy8xeVNQMlpIc3hNcEVPTHQyVHpRK2FQc1dMM0tFOTcyL1dML3pkeU8vMURhbEUzZQpZQy9lcG9BVDc2aUxKa1dFTzkxVEtJNkQvY29BSjhCRGpRSURBUUFCbzJFd1h6QU9CZ05WSFE4QkFmOEVCQU1DCkFxUXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DTUE4R0ExVWRFd0VCL3dRRk1BTUIKQWY4d0hRWURWUjBPQkJZRUZQdzV4cG5rVW1GcEFjQXhMTXR5TWlYaGh0cUdNQTBHQ1NxR1NJYjNEUUVCQ3dVQQpBNElCQVFCNlBRSEQ3dWNPcUNwM0hIdkRUQzhFd2NGZTVOVG1jRjdOZXNyNjQ4eTdlcTd3NjFrZ2Zja1h0cmlDCmU1U2JXRXNrdG4xbFBpbzJpd1JuRk1GcHNTcXkvMjZBYTI2L0ZIL0JsTWpiZ1Jpa1hnRlBYNUMrTGcwcFZKZTgKd2VtL0ptMHhtSWxlRXUyaXA4eW5WRnhPUTlmRkk5N1dLWElPcGVVaDVTdnJUdHdETUIrZ0FPNy9Xa2N3NjRIQgoyOU55bmU3QjNBU3JCbTBSUER1em9kT05MYWdzeWh2VjJSOVFpdEROelZxV2QxNFdubkZsdHBGT1o3ZTY3QllZCkFPQkp3NmtVQ0dBWU1vYlV0bk9GTmlsQjRBVnM2Z0MxT0RoSUZkdEZiMXVVajBmeUtWQVFyTG5sK3d4WmdMMmYKZWNQV1FtYmVwYjZIeFE3V05va3U3ZVh5UTNyeQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  ca.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBd1N5dFFwY3dnRjNVNEFYU2lnTHB4ZEl0ZkprWlE2L09MaEVES29vTnpSZTgwVk5FCjY0MHdQdERNeWRMUzM5Q0hXUWU1bDVRMGs1ZUMxdTVmYzVWMC8rNmxPVkZ6SmJ0WlFkZ1hqdHFCK3RVL0NoUGQKKzQ0QU5DcUtQRmRlWkNqSWI2T1gvUEQ0RTVmM2hCTjVvdmtTTFAxZXp2Z2lvUE9KWGd0OXBWcUEydk5tRlVZZgpNUisvUDh1L1BWMTFrMXkrand4QTlCaUo5QzRtZ2EyM2JzcXUwNXFCMWowOTQvNlFrSTJUMytTeFJZYnNsVHArClFrYS93WDN6MEpEVVBQd1kwRkQvLzF5U1AyWkhzeE1wRU9MdDJUelErYVBzV0wzS0U5NzIvV0wvemR5Ty8xRGEKbEUzZVlDL2Vwb0FUNzZpTEprV0VPOTFUS0k2RC9jb0FKOEJEalFJREFRQUJBb0lCQUgyZlN6RWgxdld6ajJyNwovbFduM1ZTN0FMK2xaRXVqT1lhMW80UjNjTkF1SHFsVjZGenlYU3lNWnBEZEhDdFdsWjR0S3VGTERRSHFKcmtWCkhWZXlHdnNRdTd2Um52c3JvYmp6Q1NicUxGcnRjR2hpVVJwMDF1Y1Z2djNNcDJLbEx1dUN6S1UrSTJYQ2pzRUMKVlRqSmxxdFJQZVdFY2lpUEY0YmtIQnA3QjQ3YVZyM1JXODZIMkpmcGFVdVBoL052ZzVXUTFleXovV1Y3bCtpOQptWFI3TmtENVlqTVV5bWZDV3FGWW1GZkh3a2ZCZjVlRW5zcDhFcWl4RVY0MXhqVnBhQlNZaW5YSHN1dTA2RzFEClVuQ0ZKRFNMcDlWeThtajVZNVFlandPd3BFNmN1eWxlbGRQaUE3eTA5cDc1ek92Z1pxL3dBSHRpVy9NWG93Z2MKaHJBYUhmVUNnWUVBNlBWTTBtUy9EN1VJUkQ3WHlUWmZJM0hObFlQSVNobzBwNGVMOVpPY3BpaEZ3dEQxN2JkawpnNXI1bjBRNFVuT1FFN0p5RzRBaTNnTEtJcWdyMllwejlTR01id29yaG9yRW5ac0lFM0tKTGV2QldaN0dwcUE0ClhwWEFSeTFXd0pzNkRUUk5uQ1pkUXErc1czVytCNmFZb1UwMmdQUHA1dGRJK3JrNi9ISEY3Qk1DZ1lFQTFFZ0YKSElkeVhtU1JIL3laM3V3RGZnd2E2akFHTDZMeWVsSGpDTFJ3US9SU0hUdXJYVEdIV1hITkp6eUZPV3RYUnQvcApCOGUwQkpweENMZmJuWVVxV1ArTVlRN3ZkZExlek1nWis1M1AvOTF1NWQyalJESVA2YzRDSDhJZFJSaElldE1hCjhHeHFSVFpxeCtiT2pmampmeGczRHBuMGw2aS85VTVYR1djL3hkOENnWUVBd3pySUxjNUduSmcvbkVuNk4yTjgKcWN5MjJPVi9Gak1PQzVRNkJBMjRDenZXOHVTQ0piMDYzRndsZEljTW1IVEd1dXNpVzgrdjZOVDNwOEcrTmVxbApNVHJ6WVI5cHlMQkZCRHduc1h5Y1lFS2lZRVFEQVNObStrV1B4VmJHekZXS2VnUnFRa0dZaU1tR3JZTm9SU3NsCjRKQS83Q1A5MHZwNjY3d09KZ0FIT2NjQ2dZRUEwOVdXdkRSeHJiNWZqL0xydmFmNWlEUWVPNnAyMGR5aWFld0QKU2pGOWdtSngrdGdMbG5FUlp2R0lUdW8yNitpdzdIb091Z1BRSVhQWTdtRkMxN3NHV2srUlQxMnZHZjIyOWRXTgpFQ2tZWW5VZThHV3ZRaU5PKy9ybTViZzRxeldqUm1ZWmtPZ3ZXQ2dJZ0xsVFVCdVpNY0FCV1NITEVmaUVyZzlpCkhXaUtIRE1DZ1lCUERuUU1sVEd1NXNxQ3RTMUdPZ1dmbjNzemR0OHIzd3k0UiszQ2JSd3BLOGZJUkc4NTZ0RCsKSHBsTE5mQ1VOS2dIYzI3b0NqMlpZK29jVlBsN1hESTViekU4TmxGVCsvYWtybHovVHh1MFdxTU41b3pzS2FScQo1RGw2Vy9XY25TSUt5U1NVMG9rZ1p4S0xtTFRTbkpJTDEvekRUMGsxN21xS2xPeGlCZzMrMWc9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
+  server.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURhakNDQWxLZ0F3SUJBZ0lSQUxBL3FKamJGZktpZm1mRlRWemF6RkV3RFFZSktvWklodmNOQVFFTEJRQXcKRXpFUk1BOEdBMVVFQXhNSWRtRjFiSFF0WTJFd0hoY05Nak13T0RJeE1EZzFNelF3V2hjTk1qUXdPREl3TURnMQpNelF3V2pBaE1SOHdIUVlEVlFRREV4WndaWEptYjNKdFlXNWpaUzEwWlhOMExYWmhkV3gwTUlJQklqQU5CZ2txCmhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBeFI2U3VVbk5lczEvLzIxbjJReEN2aDJpV2UvYmtWeS8KZ0QwazBZZUFBOUsxOTMvUUhvalRaMkIwMXl4OVhxbzhRYklNL0wxaEFDTTNSUStpenNJY3FvNENBajN5WWdzegoyWmhZNDBBL2w1aVZxU24xdFlwM0Z1L1ZPMlJEb1VXbVlQdXU4TzlqMDRPTmllcFhsWG1tTFQzY0Y3SXMwc3V1CkhvUHphRWpZTE9ybjk3bVRyQmFObHJiT3pYMGlIbUcvWFFMSSt2bU8zbXIvaXFlWkZBU0ZsNm1oYzlqWlZvZ3YKZWk4NWk5MHRReGkvaVNoMWtjTVNHL1o5ODZYOHQ3YXErdlJZSkpvakRWU1ptbXJGOFBBc1lQMksxQ29qZXNneQpvN0I1ZFc2dWt4QmtXQVdtbWJiUHU1VEk2YXVhUk9qVkZuUEFOQnJib2QrRlNyU0hqUzJHOVFJREFRQUJvNEdxCk1JR25NQTRHQTFVZER3RUIvd1FFQXdJRm9EQWRCZ05WSFNVRUZqQVVCZ2dyQmdFRkJRY0RBUVlJS3dZQkJRVUgKQXdJd0RBWURWUjBUQVFIL0JBSXdBREFmQmdOVkhTTUVHREFXZ0JUOE9jYVo1RkpoYVFIQU1TekxjaklsNFliYQpoakJIQmdOVkhSRUVRREErZ2had1pYSm1iM0p0WVc1alpTMTBaWE4wTFhaaGRXeDBnaDV3WlhKbWIzSnRZVzVqClpTMTBaWE4wTFhaaGRXeDBMbVJsWm1GMWJIU0hCSDhBQUFFd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFHcysKeEhnWm56ZFBKKzNMOFk1WVdYZDlyN3hZUEpjVFkvK2pDMG1GSGpYZ3J6bkt2V0k0THU2TjhJNlhtcS9vNFZWdQpsODFLUkQyQ1NkZTlMaTVOanhLZU1lOE5KVGVMVE50eG53UmpPQ2hiVW5YNFVjcHNYaW1BTno1Ly9UME55ZTlLCi95bitsZ2xUR05pdFBGNzBad2FWcmhaRWRmTVJla0NnNStLd0RvbTR4VG5BTmZzdmpwWFFKRllTemttaEJ0YlIKbE5DaUdMWVdaSGR6R01TY3hFanNBMHg3Mll1NnFHSDB0NzlDaHlGclhTL2xsc3VZZ1cxN0FTOFRwUzlrSDFQTQpDYXRIVEtVY3lIVm41UDI5QWRiRUZlZmdjQ1hQcE5oRjA2ek9ZcWlpVStBcGowVmp4MWdoQlNEd0h3Z0xlTU10CnFidFFRMDlzc2E2RlVyWWhNaDg9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  server.key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBeFI2U3VVbk5lczEvLzIxbjJReEN2aDJpV2UvYmtWeS9nRDBrMFllQUE5SzE5My9RCkhvalRaMkIwMXl4OVhxbzhRYklNL0wxaEFDTTNSUStpenNJY3FvNENBajN5WWdzejJaaFk0MEEvbDVpVnFTbjEKdFlwM0Z1L1ZPMlJEb1VXbVlQdXU4TzlqMDRPTmllcFhsWG1tTFQzY0Y3SXMwc3V1SG9QemFFallMT3JuOTdtVApyQmFObHJiT3pYMGlIbUcvWFFMSSt2bU8zbXIvaXFlWkZBU0ZsNm1oYzlqWlZvZ3ZlaTg1aTkwdFF4aS9pU2gxCmtjTVNHL1o5ODZYOHQ3YXErdlJZSkpvakRWU1ptbXJGOFBBc1lQMksxQ29qZXNneW83QjVkVzZ1a3hCa1dBV20KbWJiUHU1VEk2YXVhUk9qVkZuUEFOQnJib2QrRlNyU0hqUzJHOVFJREFRQUJBb0lCQVFDdm10ejdWRlJKNG1qMQpGSEkvV2p6YlFXc3cxQTIzSWZrNE5VQm5xVjdTQ1JVeXVCcWdHU1M4STZIelR4OGhCbWRIMzJiU2dhTzRpNmJoClQxeXE5U0swam00YnNUUU5SQTJjKzZ1MFI3aGZSUCtQQkdKd3FEb1BwUGxCUDhGQUd0eHQ2Y21mdXFRaitqNU4KYndjM2tuZ0lOZU9zK0g0V0RIM0JrYXQyYSs2cGs4cGllSzlkWThURG1yUHhYUFVSRTRMbHgzTmVWUkVXelZRUApnVFQzUUNuWWFQc1BmQ3E2L2pPVDFaQzVpNHhkdzQ1MXl5SUJxTS9PM1hOeVlucGpKKytBOGtzWVdlajh6clhzCm52VlJLQjNUMlBrZDh3MUJBTmp4THZ1d3hEanV3bXpnMmdhcGJjTUt2ZDhYcWM2d1k5T1VuUlo2WExEZWNDaDEKVkd2TnkzZ0JBb0dCQVBHcHRIZm9RdnFRWEhLait2dXl5SEErTmZ0Lys5OEdSUDJSekM3WHJ5VXJsYzdlQmVsaQpHS0tadXFGK3NRMTU2QWpWaXZUeXRXMVF1MWRoWXVLVHd4VDBtMzBTMG5Zb2doa2pMYmtlSkt4Z3p5TXQrVnVICit5bGMrNHlRaU43S0c3RS9mY1ZYZW1tcTBlc2QzaTV2QUpaYUI5bWJ2LzJ1K0FWaXJBRXBSOUJoQW9HQkFORFEKVzFLSHdrNXpLdWE4NXhPZ2gzalNrS09BYlJqMDJXdHVSb1llNm1JMWFkR2kxMkh0WVlaN3o3VDFyN1lXL20yZwp4WFVQUVh1VUdhMFB2dDh2UElsdGlmdUJUbkNIc1BTR1RQZVF5Z2Y3SzV5b0svWVg3QUJ0ZCtjMmEycXRRN2J3CnB0c2oxc0lBd3ZhdFlzR0ZrVHZrakVPbzVkNEtWUHUxUVA3b3E4OFZBb0dBR3cvaENNaDJyNjU0MjlHbktvYUQKMGFYMXo1c3ViblE2UjVjTElYZS93azdXTU50R0dET0hCTFpvWXV0WUVtVkRhYkhZSk1RRk14K21Td3U1MGh1dgo3ZW5TZTdnZTMySjc1eXE4VlEyZUY3dWpscEh3YWFLWnFyRWg3a1RGUHdXdEFqVlU5VU50anVXMUtqb25CbFloCjM3Um5TcVFaWk9ReUhCQkhxTDJoc0NFQ2dZQWF6alI2OHJ5Sno1VDVTOVNxRzFob3RUY21GZzFyUDd0TlpEbWYKYkFhUWx1Uy9xWlRXbUYrRm9RMDM0TFl1dk9McWRkSURSZk1WQngwSXIxWEVWczhCb1ZNdU94b3pyZWVVYkUwagpGcTRvdWlDT0dyU1NBZDRrNitpUmdOWG5PdGpQZWpNaFBJZU1IZ2JwSGJib3V0bTdBNHJTQUxPSmZuQU1ZK2MxCkVlOUVSUUtCZ0V6NXBYb2tzZDJyckZTRVNlblM1QWxGNEdpeG9hWW43UTdBaVhON2l6NHlpMzRrOEJiZ0hoU3MKbmNSeVVualhKdGpWQUtrdUNkWmtWTEk1cGlYWHM1cGQ0TCtwRG9aem0xU2xUZ2Q5WWIzUzJDNGtCaCtlYjRraQo3UW9haGJkVmpFRVpyQzBsNzhlQ3RXRHlOaURlcDd3NythbnoxTjhKU3VUb3gyUGxrQnNXCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+---
+# Source: prism-agent/charts/vault/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "performance-test-vault-config"
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: "vault"
+    app.kubernetes.io/instance: "performance-test"
+    app.kubernetes.io/managed-by: "Helm"
+data:
+  config.json:
+    
+    ewogICJsaXN0ZW5lciI6IHsKICAgICJ0Y3AiOiB7CiAgICAgICJhZGRyZXNzIjogIls6Ol06ODIwMCIsCiAgICAgICJ0bHNfY2VydF9maWxlIjogIi92YXVsdC90bHMvc2VydmVyLmNydCIsCiAgICAgICJ0bHNfa2V5X2ZpbGUiOiAiL3ZhdWx0L3Rscy9zZXJ2ZXIua2V5IgogICAgfQogIH0sCiAgInN0b3JhZ2UiOiB7CiAgICAiZmlsZSI6IHsKICAgICAgInBhdGgiOiAiL3ZhdWx0L2ZpbGUiCiAgICB9CiAgfSwKICAidGVsZW1ldHJ5IjogewogICAgInN0YXRzZF9hZGRyZXNzIjogImxvY2FsaG9zdDo5MTI1IgogIH0sCiAgInVpIjogdHJ1ZQp9
+    
+  vault-config.yml:
+    ewogICJhdXRoIjogWwogICAgewogICAgICAicm9sZXMiOiBbCiAgICAgICAgewogICAgICAgICAgImJvdW5kX3NlcnZpY2VfYWNjb3VudF9uYW1lcyI6ICJkZWZhdWx0IiwKICAgICAgICAgICJib3VuZF9zZXJ2aWNlX2FjY291bnRfbmFtZXNwYWNlcyI6ICJkZWZhdWx0IiwKICAgICAgICAgICJuYW1lIjogImRlZmF1bHQiLAogICAgICAgICAgInBvbGljaWVzIjogImFsbG93X3NlY3JldHMiLAogICAgICAgICAgInR0bCI6ICIxaCIKICAgICAgICB9CiAgICAgIF0sCiAgICAgICJ0eXBlIjogImt1YmVybmV0ZXMiCiAgICB9CiAgXSwKICAicG9saWNpZXMiOiBbCiAgICB7CiAgICAgICJuYW1lIjogImFsbG93X3NlY3JldHMiLAogICAgICAicnVsZXMiOiAicGF0aCBcInNlY3JldC8qXCIgeyBjYXBhYmlsaXRpZXMgPSBbXCJjcmVhdGVcIiwgXCJyZWFkXCIsIFwidXBkYXRlXCIsIFwiZGVsZXRlXCIsIFwibGlzdFwiXSB9IgogICAgfQogIF0sCiAgInNlY3JldHMiOiBbCiAgICB7CiAgICAgICJkZXNjcmlwdGlvbiI6ICJHZW5lcmFsIHNlY3JldHMuIiwKICAgICAgIm9wdGlvbnMiOiB7CiAgICAgICAgInZlcnNpb24iOiAyCiAgICAgIH0sCiAgICAgICJwYXRoIjogInNlY3JldCIsCiAgICAgICJ0eXBlIjogImt2IgogICAgfQogIF0KfQ==
+---
+# Source: prism-agent/charts/vault/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "performance-test-vault-statsd-mapping"
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: "vault"
+    app.kubernetes.io/instance: "performance-test"
+    app.kubernetes.io/managed-by: "Helm"
+data:
+  statsd-mapping.conf: |
+      mappings:
+      - labels:
+          method: $1
+          path: $2
+        match: vault.route.*.*
+        name: vault_route
+---
+# Source: prism-agent/charts/vault/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-performance-test-vault-auth-delegator
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: performance-test-vault
+  namespace: default
+---
+# Source: prism-agent/charts/vault/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: performance-test-vault-secret-access
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["bank-vaults"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["vault-unseal-keys"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: [""]
+  verbs: ["create"]
+---
+# Source: prism-agent/charts/vault/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: performance-test-vault-secret-access
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  kind: Role
+  name: performance-test-vault-secret-access
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: performance-test-vault
+  namespace: default
+---
+# Source: prism-agent/charts/vault/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: performance-test-vault
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8200
+    protocol: TCP
+    name: vault
+  - port: 8201
+    protocol: TCP
+    name: vault-cluster
+  selector:
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+---
+# Source: prism-agent/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-server-tapir-service
+  namespace: "default"
+  labels:
+    app.kubernetes.io/name: prism-agent-server
+    app.kubernetes.io/service: prism-agent-server-main
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  selector:
+    app.kubernetes.io/name: prism-agent-server
+  ports:
+    - name: prism-agent-server-main
+      protocol: "TCP"
+      port: 8085
+      targetPort: 8085
+  type: ClusterIP
+---
+# Source: prism-agent/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-server-didcomm-service
+  namespace: "default"
+  labels:
+    app.kubernetes.io/name: prism-agent-server
+    app.kubernetes.io/service: prism-agent-server-didcomm
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  selector:
+    app.kubernetes.io/name: prism-agent-server
+  ports:
+    - name: prism-agent-server-didcomm
+      protocol: "TCP"
+      port: 8090
+      targetPort: 8090
+  type: ClusterIP
+---
+# Source: prism-agent/templates/service.yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name:  agent-domain-name-fake-service
+  namespace: "default"
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "performance-test.atalaprism.io"
+  labels:
+    app.kubernetes.io/name: prism-agent-server
+    app.kubernetes.io/service: agent-server-domain-name-fake
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  type: ExternalName
+  externalName: internal-useast1-sjd4e.atalaprism.io
+---
+# Source: prism-agent/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prism-agent-server
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prism-agent-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prism-agent-server
+        app.kubernetes.io/part-of: prism-agent
+    spec:
+      imagePullSecrets:
+      - name: atala-prism-dev-deployments-github-docker-registry-key
+      initContainers:
+      - name: wait-postgress-ready
+        image: busybox
+        command: ['sh', '-c', "until nc -z atala-prism-agent-postgres-cluster.default 5432; do echo waiting for postgress-operator; sleep 2; done;"]
+      containers:
+      - name: prism-agent-server
+        image: "ghcr.io/input-output-hk/prism-agent:1.10.0"
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+              cpu: 500m
+              memory: 1024Mi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+        ports:
+        - containerPort: 8085
+        - containerPort: 8090
+        env:
+          - name: CASTOR_DB_HOST
+            value: "atala-prism-agent-postgres-cluster.default"
+          - name: CASTOR_DB_PORT
+            value: "5432"
+          - name: CASTOR_DB_NAME
+            value: castor
+          - name: CASTOR_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: castor-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: CASTOR_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: castor-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: POLLUX_DB_HOST
+            value: "atala-prism-agent-postgres-cluster.default"
+          - name: POLLUX_DB_PORT
+            value: "5432"
+          - name: POLLUX_DB_NAME
+            value: pollux
+          - name: POLLUX_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: pollux-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: POLLUX_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: pollux-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: CONNECT_DB_HOST
+            value: "atala-prism-agent-postgres-cluster.default"
+          - name: CONNECT_DB_PORT
+            value: "5432"
+          - name: CONNECT_DB_NAME
+            value: connect
+          - name: CONNECT_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: connect-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: CONNECT_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: connect-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: AGENT_DB_HOST
+            value: "atala-prism-agent-postgres-cluster.default"
+          - name: AGENT_DB_PORT
+            value: "5432"
+          - name: AGENT_DB_NAME
+            value: agent
+          - name: AGENT_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: agent-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: username
+                optional: false
+          - name: AGENT_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: agent-admin.atala-prism-agent-postgres-cluster.credentials.postgresql.acid.zalan.do
+                key: password
+                optional: false
+          - name: DIDCOMM_SERVICE_URL
+            value: "https://performance-test.atalaprism.io/prism-agent/didcomm"
+          - name: PRISM_NODE_HOST
+            value: "node-service.sit-prism-node"
+          - name: PRISM_NODE_PORT
+            value: "50053"
+          - name: WALLET_SEED
+            valueFrom:
+              secretKeyRef:
+                name: prism-agent-server-wallet
+                key: seed
+                optional: false
+          - name: SECRET_STORAGE_BACKEND
+            value: "postgres"
+---
+# Source: prism-agent/charts/vault/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: performance-test-vault
+  namespace: default
+  labels:
+    helm.sh/chart: vault-1.19.0
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: performance-test
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  serviceName: performance-test-vault
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      app.kubernetes.io/instance: performance-test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vault
+        app.kubernetes.io/instance: performance-test
+      annotations:
+        checksum/config: c132df461b01b3ec609570b18d3e35b909efd1c4b3aeb2c6021f1364e3920d31
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9102"
+        prometheus.io/scrape: "true"
+    spec:
+      initContainers:
+      - name: vault-config
+        image: "ghcr.io/banzaicloud/bank-vaults:1.19.0"
+        imagePullPolicy: IfNotPresent
+        command: ["template"]
+        args:
+          - "-delims"
+          - "[[:]]"
+          - "-template"
+          - "/vault/raw-config/config.json:/vault/config/config.json"
+          - "-template"
+          - "/vault/raw-config/vault-config.yml:/vault/config/vault-config.yml"
+        envFrom:
+        env:
+        volumeMounts:
+        - name: vault-raw-config
+          mountPath: /vault/raw-config/
+        - name: vault-config
+          mountPath: /vault/config/
+        resources:
+          {}
+
+      containers:
+      - name: vault
+        image: "vault:1.6.2"
+        imagePullPolicy: IfNotPresent
+        command: ["vault", "server", "-config", "/vault/config/config.json"]
+        env:
+        - name: VAULT_CACERT
+          value: /vault/tls/ca.crt
+        - name: VAULT_LOG_LEVEL
+          value: info
+        - name: VAULT_ADDR
+        
+          value: https://127.0.0.1:8200
+          
+        envFrom:
+        ports:
+        - containerPort: 8200
+          name: vault
+        - containerPort: 8201
+          name: cluster
+        # This probe makes sure Vault is responsive in a HTTPS manner
+        # See: https://www.vaultproject.io/api/system/init.html
+        livenessProbe:
+          httpGet:
+            
+            scheme: HTTPS
+            
+            path: /v1/sys/init
+            port: vault
+        # This probe makes sure that only the active Vault instance gets traffic
+        # See: https://www.vaultproject.io/api/system/health.html
+        readinessProbe:
+          httpGet:
+            
+            scheme: HTTPS
+            
+            path: /v1/sys/health?standbyok=true&perfstandbyok=true&drsecondarycode=299
+            port: vault
+        securityContext:
+          readOnlyRootFilesystem: true
+          
+          capabilities:
+            add:
+            - IPC_LOCK
+          
+        volumeMounts:
+        - name: vault-config
+          mountPath: /vault/config/
+        - name: vault-root
+          mountPath: /root/
+        - name: vault-file
+          mountPath: /vault/file
+        - name: vault-tls
+          mountPath: /vault/tls
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+      - name: vault-unsealer
+        image: "ghcr.io/banzaicloud/bank-vaults:1.19.0"
+        imagePullPolicy: IfNotPresent
+        command: ["bank-vaults", "unseal", "--init"]
+        args: ["--mode","k8s","--k8s-secret-namespace","default","--k8s-secret-name","bank-vaults"]
+        env:
+        - name: VAULT_CACERT
+          value: /vault/tls/ca.crt
+        - name: VAULT_ADDR
+        
+          value: https://127.0.0.1:8200
+          
+        envFrom:
+        ports:
+        - containerPort: 9091
+          name: "metrics"
+        volumeMounts:
+        - name: vault-tls
+          mountPath: /vault/tls
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+      - name: vault-configurer
+        image: "ghcr.io/banzaicloud/bank-vaults:1.19.0"
+        imagePullPolicy: IfNotPresent
+        command: ["bank-vaults", "configure"]
+        args: ["--mode","k8s","--k8s-secret-namespace","default","--k8s-secret-name","bank-vaults","--disable-metrics"]
+        env:
+        - name: VAULT_CACERT
+          value: /vault/tls/ca.crt
+        - name: VAULT_ADDR
+        
+          value: https://127.0.0.1:8200
+          
+        envFrom:
+        workingDir: /config
+        volumeMounts:
+        - name: vault-tls
+          mountPath: /vault/tls
+        - name: vault-config
+          mountPath: /config/
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+      - name: prometheus-statsd-exporter
+        image: "prom/statsd-exporter:latest"
+        imagePullPolicy: IfNotPresent
+        args: ["--statsd.mapping-config=/tmp/statsd-mapping.conf"]
+        ports:
+        - containerPort: 9102
+          name: prometheus
+        volumeMounts:
+        - name: statsd-mapping
+          mountPath: /tmp/
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: performance-test-vault
+                  app.kubernetes.io/instance: "performance-test"
+      serviceAccountName: performance-test-vault
+      securityContext:
+        fsGroup: 65534
+      volumes:
+        - name: vault-raw-config
+          secret:
+            secretName: "performance-test-vault-config"
+        - name: vault-config
+          emptyDir: {}
+        - name: vault-root
+          emptyDir: {}
+        - name: vault-file
+          emptyDir: {}
+        - name: vault-tls
+          secret:
+            secretName: "performance-test-vault-tls"
+        - name: statsd-mapping
+          configMap:
+            name: "performance-test-vault-statsd-mapping"
+---
+# Source: prism-agent/templates/vault-unseal.yaml
+# https://github.com/omegion/vault-unseal/blob/master/examples/kubernetes/cronjob.yaml
+---
+# Source: prism-agent/templates/apisixconsumer.yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: "key1"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  authParameter:
+    keyAuth:
+      secretRef:
+        name: "default-key1"
+---
+# Source: prism-agent/templates/apisixroute.yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: agent-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  http:
+  - name: agent-rule
+    match:
+      hosts:
+        - performance-test.atalaprism.io
+      paths:
+      - /prism-agent/*
+    backends:
+       - serviceName: agent-server-tapir-service
+         servicePort: 8085
+    authentication:
+      enable: true
+      type: keyAuth
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/(.*)","/$1"]
+    - name: uri-blocker
+      enable: true
+      config:
+        block_rules: ["_system/metrics"]
+        rejected_message: "access to metrics resource is not allowed from an external location"
+    
+    - name: cors
+      enable: true
+      config:
+        allow_origins: "*"
+    
+    - name: consumer-restriction
+      enable: true
+      config:
+        whitelist:
+          -  performance_test_key1
+---
+# Source: prism-agent/templates/apisixroute.yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: agent-didcomm-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  http:
+  - name: agent-didcomm-rule
+    match:
+      hosts:
+        - performance-test.atalaprism.io
+      paths:
+      - /prism-agent/didcomm*
+    backends:
+      - serviceName: agent-server-didcomm-service
+        servicePort: 8090
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/didcomm(.*)", "/$1"]
+    
+    - name: cors
+      enable: true
+      config:
+        allow_origins: "*"
+---
+# Source: prism-agent/templates/apisixroute.yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: agent-schema-registry-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  http:
+  - name: agent-schema-registry-rule
+    match:
+      hosts:
+        - performance-test.atalaprism.io
+      paths:
+      - /prism-agent/schema-registry/schemas/*
+      methods:
+      - GET
+    backends:
+      - serviceName: agent-server-tapir-service
+        servicePort: 8085
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/schema-registry/schemas/(.*)", "/schema-registry/schemas/$1"]
+    
+    - name: cors
+      enable: true
+      config:
+        allow_origins: "*"
+---
+# Source: prism-agent/templates/apisixroute.yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: agent-docs-route
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  http:
+  - name: agent-docs-rule
+    match:
+      hosts:
+        - performance-test.atalaprism.io
+      paths:
+      - /prism-agent/docs/*
+    backends:
+      - serviceName: agent-server-tapir-service
+        servicePort: 8085
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        regex_uri: ["^/prism-agent/docs/(.*)","/docs/$1"]
+    
+    - name: cors
+      enable: true
+      config:
+        allow_origins: "*"
+---
+# Source: prism-agent/templates/apisixtls.yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: "prism-agent-base-path-tls"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  hosts:
+    - performance-test.atalaprism.io
+  secret:
+    name: "prism-agent-base-path-secret"
+    namespace: "default"
+---
+# Source: prism-agent/templates/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: "prism-agent-base-path-cert"
+  namespace: "default"
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  secretName: "prism-agent-base-path-secret"
+  duration: 2160h0m0s # 90d
+  renewBefore: 360h0m0s # 15d
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - performance-test.atalaprism.io
+---
+# Source: prism-agent/templates/externalsecret.yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: "atala-prism-dev-deployments-github-docker-registry-key"
+  namespace: default
+  labels:
+      app.kubernetes.io/part-of: prism-agent
+spec:
+  refreshInterval: "0"
+  secretStoreRef:
+    name: prism-v2-dev-sjd4e-us-east-1-externalsecrets
+    kind: ClusterSecretStore
+  target:
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: "{{ .dockerconfigjson | b64dec }}"
+  dataFrom:
+    - extract:
+        key: dev-sjd4e-argocd-github-docker-registry-token
+---
+# Source: prism-agent/templates/cloudwalletsecret.yaml
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
+kind: StringSecret
+metadata:
+  name: "prism-agent-server-wallet"
+  namespace: default
+spec:
+  forceRegenerate: false
+  fields:
+    - fieldName: "seed"
+      encoding: "hex"
+      length: "128"
+---
+# Source: prism-agent/templates/stringsecret.yaml
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
+kind: StringSecret
+metadata:
+  name: "default-key1"
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  forceRegenerate: false
+  data:
+    username: key1
+  fields:
+    - fieldName: "key"
+      encoding: "base64"
+      length: "32"
+---
+# Source: prism-agent/templates/postgresql.yaml
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: "atala-prism-agent-postgres-cluster"
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: prism-agent
+spec:
+  teamId: "atala"
+  volume:
+    size: "4Gi"
+  numberOfInstances: 2
+  users:
+    castor-admin:
+      - superuser
+      - createdb
+    castor-application-user: []
+    pollux-admin:
+      - superuser
+      - createdb
+    pollux-application-user: []
+    connect-admin:
+      - superuser
+      - createdb
+    connect-application-user: []
+    agent-admin:
+      - superuser
+      - createdb
+    agent-application-user: []
+  databases:
+    castor: castor-admin
+    pollux: pollux-admin
+    connect: connect-admin
+    agent: agent-admin
+  postgresql:
+    version: "14"
+---
+# Source: prism-agent/charts/vault/templates/tests/test-vault-status.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "performance-test-vault-status-test"
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+  - name: performance-test-vault-status-test
+    image: "vault:1.6.2"
+    env:
+      - name: VAULT_SKIP_VERIFY
+        value: "true"
+      - name: VAULT_ADDR
+        value: https://performance-test-vault:8200
+    command: ["sh", "-c", "vault status"]
+  restartPolicy: Never
+---
+# Source: prism-agent/charts/vault/templates/secret-cleanup.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: performance-test-vault-secret-cleanup
+  namespace: default
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    app.kubernetes.io/name: vault
+spec:
+  template:
+    metadata:
+      name: performance-test-vault-secret-cleanup
+      labels:
+        app.kubernetes.io/name: vault
+    spec:
+      serviceAccountName: performance-test-vault
+      containers:
+        - name: performance-test-vault-secret-cleanup
+          image: "k8s.gcr.io/hyperkube:v1.12.1"
+          imagePullPolicy: "IfNotPresent"
+          command:
+          - /bin/sh
+          - -c
+          - >
+              kubectl delete secret bank-vaults --ignore-not-found=true;
+              kubectl delete secret vault-unseal-keys --ignore-not-found=true;
+      restartPolicy: OnFailure

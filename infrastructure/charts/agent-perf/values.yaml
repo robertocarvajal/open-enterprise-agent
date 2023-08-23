@@ -1,0 +1,18 @@
+ingress:
+  applicationUrls:
+  - performance-test.atalaprism.io
+  platformIngressUrl: internal-useast1-sjd4e.atalaprism.io
+  consumers: ["key1"]
+secrets:
+  secretStore: prism-v2-dev-sjd4e-us-east-1-externalsecrets
+  dockerRegistryToken: dev-sjd4e-argocd-github-docker-registry-token
+server:
+  useVault: false
+  additionalEnvVariables:
+    SECRET_STORAGE_BACKEND: "postgres"
+vdrManager:
+  host: node-service.sit-prism-node
+vault:
+  global:
+    enabled: false
+

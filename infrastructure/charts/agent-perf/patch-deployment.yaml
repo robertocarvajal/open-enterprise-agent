@@ -1,0 +1,11 @@
+- op: add
+  path: /spec/template/spec/nodeSelector
+  value:
+    dedicated: "true"
+- op: add
+  path: /spec/template/spec/tolerations
+  value:
+  - key: "key"
+    operator: "Equal"
+    value: "value"
+    effect: "NoSchedule"
