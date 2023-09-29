@@ -1,0 +1,46 @@
+secrets:
+  secretStore: chart-base-secretstore
+  dockerRegistryToken: chart-base-docker-registry-token
+
+server:
+  image:
+      repository: ghcr.io
+      pullPolicy: IfNotPresent
+      tag: input-output-hk/prism-agent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  additionalEnvVariables: []
+  devMode: false
+  useVault: true
+
+agentsUnderTest:
+    authRequired: true
+    authHeader: apikey
+    adminAuthHeader: x-admin-api-key
+    admin:
+      url: chart-default-admin-url
+      authKey: admin
+    acme:
+      url: chart-default-acme-url
+      authKey: chart-default-change-me
+      webhook:
+        host: chart-default-acme-webhook-host
+        port: 9955
+    bob:
+      url: chart-default-bob-url
+      authKey: chart-default-change-me
+      webhook:
+        host: chart-default-bob-webhook-host
+        port: 9956
+    faber:
+      url: chart-default-faber-url
+      authKey: chart-default-change-me
+      webhook:
+        host: chart-default-faber-webhook-host
+        port: 9957
+

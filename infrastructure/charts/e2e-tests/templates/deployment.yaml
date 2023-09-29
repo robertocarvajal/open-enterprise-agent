@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-e2e-tests
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    {{ template "labels.common" . }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent-e2e-tests-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agent-e2e-tests-server
+        {{ template "labels.common" . }}
+    spec:
+      imagePullSecrets:
+      - name: atala-prism-dev-deployments-github-docker-registry-key
+      containers:
+      - name: agent-e2e-tests-server
+        image: "{{ .Values.server.image.repository }}/{{ .Values.server.image.tag }}:{{ .Values.server.image.version | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+        resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+        ports:
+        - containerPort: 9955
+        - containerPort: 9956
+        - containerPort: 9957
+        env:
+          - name: AGENT_AUTH_REQUIRED
+            value:  {{ .Values.agentsUnderTest.authRequired | quote }}
+          - name: AGENT_AUTH_HEADER
+            value:  {{ .Values.agentsUnderTest.authHeader | quote }}
+          - name: ACME_AGENT_URL
+            value: {{ .Values.agentsUnderTest.acme.url | quote }}
+          - name: ACME_AUTH_KEY
+            value: {{ .Values.agentsUnderTest.acme.authKey | quote }}
+          - name: ACME_AGENT_WEBHOOK_HOST
+            value: {{ .Values.agentsUnderTest.acme.webhook.host | quote }}
+          - name: ACME_AGENT_WEBHOOK_PORT
+            value: {{ .Values.agentsUnderTest.acme.webhook.port | quote }}
+          - name: BOB_AGENT_URL
+            value: {{ .Values.agentsUnderTest.bob.url | quote }}
+          - name: BOB_AUTH_KEY
+            value: {{ .Values.agentsUnderTest.bob.authKey | quote }}
+          - name: BOB_AGENT_WEBHOOK_HOST
+            value: {{ .Values.agentsUnderTest.bob.webhook.host | quote }}
+          - name: BOB_AGENT_WEBHOOK_PORT
+            value: {{ .Values.agentsUnderTest.bob.webhook.port | quote }}
+          - name: FABER_AGENT_URL
+            value: {{ .Values.agentsUnderTest.faber.url | quote }}
+          - name: FABER_AUTH_KEY
+            value: {{ .Values.agentsUnderTest.faber.authKey | quote }}
+          - name: FABER_AGENT_WEBHOOK_HOST
+            value: {{ .Values.agentsUnderTest.faber.webhook.host | quote }}
+          - name: FABER_AGENT_WEBHOOK_PORT
+            value: {{ .Values.agentsUnderTest.faber.webhook.port | quote }}
+          - name: ADMIN_AGENT_URL
+            value: {{ .Values.agentsUnderTest.admin.url | quote }}
+          - name: ADMIN_AUTH_HEADER
+            value:  {{ .Values.agentsUnderTest.adminAuthHeader | quote }}
+          - name: ADMIN_AUTH_TOKEN
+            value: {{ .Values.agentsUnderTest.admin.authKey | quote }}
