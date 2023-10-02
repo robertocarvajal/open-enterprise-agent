@@ -7,5 +7,7 @@ export let options: Options = defaultOptions
 const issuer = new Issuer();
 
 export default () => {
+  group("Issuer create unpublished DID", function () {
     issuer.createUnpublishedDid();
+  });
 };
