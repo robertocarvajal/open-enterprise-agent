@@ -1,8 +1,17 @@
 import { group } from 'k6';
-import { Options } from 'k6/options';
+import { Options, Threshold } from 'k6/options';
 import { Issuer, Holder, Verifier } from '../../actors';
 import { CredentialSchemaResponse } from '@input-output-hk/prism-typescript-client';
 import { defaultOptions } from "../../scenarios/default";
+
+export const localOptions: Options = {
+  thresholds: {
+    'group_duration{group:::Holder connects with Issuer}': ['avg < 15000'],
+    'group_duration{group:::Issuer creates credential offer for Holder}': ['avg < 120000'],
+    'group_duration{group:::Holder connects with Verifier}': ['avg < 15000'],
+    'group_duration{group:::Verifier requests proof from Holder}': ['avg < 15000'],
+  }
+}
 
 export let options: Options = defaultOptions
 
