@@ -3,8 +3,14 @@ import { Options } from 'k6/options';
 import { Issuer, Holder } from '../../actors';
 import { Connection, CredentialSchemaResponse } from '@input-output-hk/prism-typescript-client';
 import { defaultOptions } from "../../scenarios/default";
+import merge from "ts-deepmerge";
 
-export let options: Options = defaultOptions
+export const localOptions: Options = {
+  thresholds: {
+    'group_duration{group:::Issuer creates credential offer}': ['avg < 15000']
+  }
+}
+export let options: Options = merge(localOptions, defaultOptions)
 export const issuer = new Issuer();
 export const holder = new Holder();
 
