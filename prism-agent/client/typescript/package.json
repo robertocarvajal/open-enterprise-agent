@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "TypeScript OpenAPI client for Open Enterprise Agent",
   "author": "allain.magyar@iohk.io",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/hyperledger-labs/open-enterprise-agent/"
@@ -13,7 +14,6 @@
     "openapi-client",
     "openapi-generator"
   ],
-  "license": "Unlicensed",
   "main": "./dist/index.js",
   "type": "commonjs",
   "exports": {

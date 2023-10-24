@@ -11,6 +11,6 @@ gradle -p ../kotlin -Pversion=${PRISM_AGENT_VERSION} publish
 
 # typescript
 yarn --cwd ../typescript
-yarn --cwd ../typescript publish --new-version ${PRISM_AGENT_VERSION} --no-git-tag-version
+yarn --cwd ../typescript publish --new-version ${PRISM_AGENT_VERSION} --no-git-tag-version --access public
 
 # python
