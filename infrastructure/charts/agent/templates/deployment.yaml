@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: TypoDeployment
+kind: Deployment
 metadata:
   name: prism-agent-server
   namespace: "{{ .Release.Namespace }}"
