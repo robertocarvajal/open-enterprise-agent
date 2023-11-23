@@ -16,6 +16,14 @@ data:
     PRISM_AGENT_CLIENT_ID=$PRISM_AGENT_CLIENT_ID
     PRISM_AGENT_CLIENT_SECRET=$PRISM_AGENT_CLIENT_SECRET
 
+
+    echo "KEYCLOAK_BASE_URL: $KEYCLOAK_BASE_URL"
+    echo "KEYCLOAK_ADMIN_USER: $KEYCLOAK_ADMIN_USER"
+    echo "KEYCLOAK_ADMIN_PASSWORD: $KEYCLOAK_ADMIN_PASSWORD"
+    echo "REALM_NAME: $REALM_NAME"
+    echo "PRISM_AGENT_CLIENT_ID: $PRISM_AGENT_CLIENT_ID"
+    echo "PRISM_AGENT_CLIENT_SECRET: $PRISM_AGENT_CLIENT_SECRET"
+
     function get_admin_token() {
       local response=$(
         curl --request POST "$KEYCLOAK_BASE_URL/realms/master/protocol/openid-connect/token" \
