@@ -373,7 +373,7 @@ lazy val D_EventNotification = new {
 }
 
 lazy val D_Pollux_AnonCreds = new {
-  val baseDependencies: Seq[ModuleID] = Seq(D.zio, D.zioJson)
+  val baseDependencies: Seq[ModuleID] = Seq(D.zio, D.zioTest, D.zioJson)
 }
 
 lazy val D_PrismAgent = new {
@@ -765,13 +765,18 @@ lazy val polluxAnoncreds = project
   .in(file("pollux/lib/anoncreds"))
   // .settings(polluxCommonSettings)
   .enablePlugins(BuildInfoPlugin)
-  .enablePlugins(JavaAppPackaging)
+  .enablePlugins(JavaAppPackaging, DockerPlugin)
   .settings(
     name := "pollux-anoncreds",
     Compile / unmanagedJars += baseDirectory.value / "anoncreds-jvm-1.0-SNAPSHOT.jar",
     Compile / unmanagedResourceDirectories ++= Seq(
       baseDirectory.value / "native-lib" / "NATIVE"
     ),
+    dockerBaseImage := "openjdk:21-jdk",
+    Docker / maintainer := "atala-coredid@iohk.io",
+    Docker / dockerUsername := Some("input-output-hk"),
+    Docker / dockerRepository := Some("ghcr.io"),
+    Compile / mainClass := Some("io.iohk.atala.pollux.anoncreds.AnonCredsLibBenchmarking"),
     libraryDependencies ++= D_Pollux_AnonCreds.baseDependencies
   )
 
