@@ -33,7 +33,8 @@ spec:
         command: ['/bin/bash', '-c', '/scripts/init.sh']
         env:
         - name: KEYCLOAK_BASE_URL
-          value: http://{{ .Release.Name }}-keycloak
+          # FXIME FIXME FIXME PLEAES
+          value: http://sit-keycloak
         - name: KEYCLOAK_ADMIN_USER
           value: {{ .Values.server.keycloak.admin.username }}
         - name: KEYCLOAK_ADMIN_PASSWORD
