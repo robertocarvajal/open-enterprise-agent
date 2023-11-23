@@ -4,7 +4,7 @@ metadata:
   name: keycloak-bootstrap-script
 data:
   init.sh: |
-    #!/usr/bin/env bash
+    #!/usr/bin/env bash -x
 
     set -e
     set -u
