@@ -5,7 +5,7 @@ metadata:
 data:
   init.sh: |
     #!/usr/bin/env bash
-
+    set -x
     set -e
     set -u
 
