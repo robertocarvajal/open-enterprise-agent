@@ -17,7 +17,8 @@ import java.net.URL
 import java.time.OffsetDateTime
 
 open class ListenToEvents(
-    private val url: URL
+    private val url: URL,
+    private val internalPort: Int
 ) : Ability, HasTeardown {
 
     private val server: ApplicationEngine
@@ -34,6 +35,7 @@ open class ListenToEvents(
         application.routing {
             post("/") {
                 val eventString = call.receiveText()
+                println("Received event: $eventString")
                 val event = gson.fromJson(eventString, Event::class.java)
                 when (event.type) {
                     TestConstants.EVENT_TYPE_CONNECTION_UPDATED -> connectionEvents.add(gson.fromJson(eventString, ConnectionEvent::class.java))
@@ -52,8 +54,8 @@ open class ListenToEvents(
     }
 
     companion object {
-        fun at(url: URL): ListenToEvents {
-            return ListenToEvents(url)
+        fun at(url: URL, internalPort: Int): ListenToEvents {
+            return ListenToEvents(url, internalPort)
         }
 
         fun `as`(actor: Actor): ListenToEvents {
@@ -64,8 +66,8 @@ open class ListenToEvents(
     init {
         server = embeddedServer(
             Netty,
-            port = url.port,
-            host = if (url.host == "host.docker.internal") "0.0.0.0" else url.host,
+            port = internalPort,
+            host = "0.0.0.0",
             module = { route(this) }
         )
             .start(wait = false)

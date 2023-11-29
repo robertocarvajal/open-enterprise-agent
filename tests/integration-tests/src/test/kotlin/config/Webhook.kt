@@ -5,5 +5,6 @@ import java.net.URL
 
 data class Webhook(
     val url: URL,
-    @ConfigAlias("init_required") val initRequired: Boolean = true
+    @ConfigAlias("init_required") val initRequired: Boolean = true,
+    @ConfigAlias("internal_port") val internalPort: Int
 )
