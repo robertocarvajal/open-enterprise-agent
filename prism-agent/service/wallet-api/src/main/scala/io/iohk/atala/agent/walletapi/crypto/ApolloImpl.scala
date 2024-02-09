@@ -1,13 +1,14 @@
 package io.iohk.atala.agent.walletapi.crypto
 
 import io.iohk.atala.castor.core.model.did.EllipticCurve
+import io.iohk.atala.prism.apollo.derivation.MnemonicHelper
 import io.iohk.atala.prism.apollo.secp256k1.Secp256k1Lib
 import io.iohk.atala.prism.apollo.securerandom.SecureRandom
 import zio.*
 
 import scala.collection.immutable.ArraySeq
+import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Failure, Success}
-import java.security.interfaces
 
 final case class ApolloImplPublicKey(bytes: ArraySeq[Byte]) extends ECPublicKey {
 
@@ -16,7 +17,7 @@ final case class ApolloImplPublicKey(bytes: ArraySeq[Byte]) extends ECPublicKey 
       .flatMap(isValid => if (isValid) Success(()) else Failure(Exception("The signature verification does not match")))
 
   override def toJavaPublicKey: java.security.interfaces.ECPublicKey =
-    // we're cheating a little but and delegate the call to prism 1.4 sdk
+    // TODO: do not use prism14
     Prism14Apollo.ecKeyFactory
       .publicKeyFromEncoded(curve, encode)
       .get
@@ -39,7 +40,7 @@ final case class ApolloImplPrivateKey(bytes: ArraySeq[Byte]) extends ECPrivateKe
   override def computePublicKey: ECPublicKey =
     ApolloImplPublicKey(ArraySeq.from(ApolloImpl.secpLib.createPublicKey(bytes.toArray, true)))
 
-  override def toJavaPrivateKey: interfaces.ECPrivateKey =
+  override def toJavaPrivateKey: java.security.interfaces.ECPrivateKey =
     // TODO: do not use prism14
     Prism14Apollo.ecKeyFactory
       .privateKeyFromEncoded(curve, encode)
@@ -86,8 +87,11 @@ object ApolloImplFactory extends ECKeyFactory {
       }
   }
 
-  // TODO: do not use prism14
-  override def randomBip32Seed(): Task[(Array[Byte], Seq[String])] = Prism14ECKeyFactory.randomBip32Seed()
+  override def randomBip32Seed(): Task[(Array[Byte], Seq[String])] = ZIO.attempt {
+    val words = MnemonicHelper.Companion.createRandomMnemonics()
+    val seed = MnemonicHelper.Companion.createSeed(words, "")
+    seed -> words.asScala.toList
+  }
 
   override def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPrivateKey] = {
     curve match {
