@@ -6,6 +6,7 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport.*
 inThisBuild(
   Seq(
     organization := "io.iohk.atala",
+    organizationName := "Input Output Global",
     scalaVersion := "3.3.1",
     fork := true,
     run / connectInput := true,
@@ -77,6 +78,7 @@ lazy val V = new {
   val slf4j = "2.0.7"
 
   val prismSdk = "1.4.1" // scala-steward:off
+  val apollo = "1.2.10"
   val scalaUri = "4.0.3"
 
   val jwtCirceVersion = "9.1.2"
@@ -155,6 +157,8 @@ lazy val D = new {
   val monocle: ModuleID =  "dev.optics" %% "monocle-core"  % V.monocle % Test
   val monocleMacro: ModuleID = "dev.optics" %% "monocle-macro" % V.monocle % Test
 
+  val apollo = "io.iohk.atala.prism.apollo" % "apollo-jvm" % V.apollo
+
   // LIST of Dependencies
   val doobieDependencies: Seq[ModuleID] =
     Seq(doobiePostgres, doobieHikari, flyway)
@@ -166,10 +170,11 @@ lazy val D_Shared = new {
       D.typesafeConfig,
       D.scalaPbGrpc,
       D.zio,
+      D.apollo,
       // FIXME: split shared DB stuff as subproject?
       D.doobieHikari,
       D.doobiePostgres,
-      D.zioCatsInterop
+      D.zioCatsInterop,
     )
 }
 
@@ -448,31 +453,22 @@ val commonSetttings = Seq(
 // #####  shared  ######
 // #####################
 
-lazy val shared = (project in file("shared"))
-  // .configure(publishConfigure)
+lazy val shared = (project in file("shared/shared-common"))
   .settings(commonSetttings)
   .settings(
-    organization := "io.iohk.atala",
-    organizationName := "Input Output Global",
-    buildInfoPackage := "io.iohk.atala.shared",
     name := "shared",
     crossPaths := false,
     libraryDependencies ++= D_Shared.dependencies
   )
-  .enablePlugins(BuildInfoPlugin)
 
-lazy val sharedTest = (project in file("shared-test"))
+lazy val sharedTest = (project in file("shared/shared-test"))
   .settings(commonSetttings)
   .settings(
-    organization := "io.iohk.atala",
-    organizationName := "Input Output Global",
-    buildInfoPackage := "io.iohk.atala.sharedtest",
-    name := "sharedtest",
+    name := "shared-test",
     crossPaths := false,
     libraryDependencies ++= D_SharedTest.dependencies
   )
   .dependsOn(shared)
-  .enablePlugins(BuildInfoPlugin)
 
 // #########################
 // ### Models & Services ###
@@ -734,7 +730,6 @@ lazy val polluxDoobie = project
 
 lazy val polluxAnoncreds = project
   .in(file("pollux/lib/anoncreds"))
-  .enablePlugins(BuildInfoPlugin)
   .enablePlugins(JavaAppPackaging)
   .settings(
     name := "pollux-anoncreds",

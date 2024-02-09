@@ -1,7 +1,7 @@
 package io.iohk.atala.agent.walletapi.crypto
 
-import io.iohk.atala.castor.core.model.did.EllipticCurve
 import io.iohk.atala.agent.walletapi.util.Prism14CompatUtil.*
+import io.iohk.atala.castor.core.model.did.EllipticCurve
 import zio.*
 
 import scala.util.Try
@@ -44,4 +44,5 @@ trait Apollo {
 
 object Apollo {
   val prism14Layer: ULayer[Apollo] = ZLayer.succeed(Prism14Apollo)
+  val apolloImplLayer: ULayer[Apollo] = ZLayer.succeed(ApolloImpl)
 }

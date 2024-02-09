@@ -1,20 +1,19 @@
 package io.iohk.atala.agent.walletapi.crypto
 
-import io.iohk.atala.castor.core.model.did.EllipticCurve
-
-import scala.util.{Failure, Success, Try}
-import java.security.KeyFactory
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.spec.ECNamedCurveSpec
-
-import java.security.spec.{ECPrivateKeySpec, ECPublicKeySpec}
 import io.iohk.atala.agent.walletapi.util.Prism14CompatUtil.*
+import io.iohk.atala.castor.core.model.did.EllipticCurve
 import io.iohk.atala.prism.crypto.EC
-import zio.*
-import io.iohk.atala.prism.crypto.derivation.KeyDerivation
 import io.iohk.atala.prism.crypto.derivation.DerivationAxis
+import io.iohk.atala.prism.crypto.derivation.KeyDerivation
+import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.jce.spec.ECNamedCurveSpec
+import zio.*
+
+import java.security.KeyFactory
+import java.security.spec.{ECPrivateKeySpec, ECPublicKeySpec}
 import scala.jdk.CollectionConverters.*
+import scala.util.{Failure, Success, Try}
 
 final case class Prism14ECPublicKey(publicKey: io.iohk.atala.prism.crypto.keys.ECPublicKey) extends ECPublicKey {
 
