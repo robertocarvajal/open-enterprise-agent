@@ -1,7 +1,7 @@
 package io.iohk.atala.agent.walletapi.crypto
 
 import io.iohk.atala.castor.core.model.did.EllipticCurve
-import io.iohk.atala.prism.apollo.derivation.MnemonicHelper
+import io.iohk.atala.prism.apollo.derivation
 import io.iohk.atala.prism.apollo.secp256k1.Secp256k1Lib
 import io.iohk.atala.prism.apollo.securerandom.SecureRandom
 import zio.*
@@ -67,29 +67,33 @@ object ApolloImplFactory extends ECKeyFactory {
   }
 
   override def deriveKeyPair(curve: EllipticCurve, seed: Array[Byte])(path: DerivationPath*): Task[ECKeyPair] = {
-    // TODO: do not use prism14
-    Prism14ECKeyFactory
-      .deriveKeyPair(curve, seed)(path: _*)
-      .map { case ECKeyPair(pub, pri) =>
-        ECKeyPair(
-          ApolloImplPublicKey(ArraySeq.from(pub.encode)),
-          ApolloImplPrivateKey(ArraySeq.from(pri.encode)),
-        )
-      }
-  }
+    curve match {
+      case EllipticCurve.SECP256K1 =>
+        ZIO.attempt {
+          val pathStr = path
+            .foldLeft(derivation.DerivationPath.empty()) { case (path, p) =>
+              p match {
+                case DerivationPath.Hardened(i) => path.derive(derivation.DerivationAxis.hardened(i))
+                case DerivationPath.Normal(i)   => path.derive(derivation.DerivationAxis.normal(i))
+              }
+            }
+            .toString()
+          val hdKey = derivation.HDKey(seed, 0, 0).derive(pathStr)
+          val privateKey = hdKey.getKMMSecp256k1PrivateKey()
+          val publicKey = privateKey.getPublicKey()
 
-  override def publicKeyFromCoordinate(curve: EllipticCurve, x: BigInt, y: BigInt): Try[ECPublicKey] = {
-    // TODO: do not use prism14
-    Prism14ECKeyFactory
-      .publicKeyFromCoordinate(curve, x, y)
-      .map { publicKey =>
-        ApolloImplPublicKey(ArraySeq.from(publicKey.encode))
-      }
+          ECKeyPair(
+            ApolloImplPublicKey(ArraySeq.from(privateKey.getEncoded())),
+            ApolloImplPrivateKey(ArraySeq.from(publicKey.getCompressed())),
+          )
+        }
+      case crv => ZIO.fail(Exception(s"Operation on curve ${crv.name} is not yet supported"))
+    }
   }
 
   override def randomBip32Seed(): Task[(Array[Byte], Seq[String])] = ZIO.attempt {
-    val words = MnemonicHelper.Companion.createRandomMnemonics()
-    val seed = MnemonicHelper.Companion.createSeed(words, "")
+    val words = derivation.MnemonicHelper.Companion.createRandomMnemonics()
+    val seed = derivation.MnemonicHelper.Companion.createSeed(words, "")
     seed -> words.asScala.toList
   }
 

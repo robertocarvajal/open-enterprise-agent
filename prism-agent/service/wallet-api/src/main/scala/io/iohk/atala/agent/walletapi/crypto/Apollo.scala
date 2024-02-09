@@ -25,7 +25,6 @@ trait ECPrivateKey {
 }
 
 trait ECKeyFactory {
-  def publicKeyFromCoordinate(curve: EllipticCurve, x: BigInt, y: BigInt): Try[ECPublicKey]
   def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPublicKey]
   def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPrivateKey]
   def generateKeyPair(curve: EllipticCurve): Task[ECKeyPair]

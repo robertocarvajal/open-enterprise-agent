@@ -110,13 +110,6 @@ object Prism14ECKeyFactory extends ECKeyFactory {
       case crv => Failure(Exception(s"Operation on curve ${crv.name} is not yet supported"))
     }
 
-  override def publicKeyFromCoordinate(curve: EllipticCurve, x: BigInt, y: BigInt): Try[ECPublicKey] =
-    curve match {
-      case EllipticCurve.SECP256K1 =>
-        Try(Prism14ECPublicKey(EC.INSTANCE.toPublicKeyFromBigIntegerCoordinates(x.toKotlinBigInt, y.toKotlinBigInt)))
-      case crv => Failure(Exception(s"Operation on curve ${crv.name} is not yet supported"))
-    }
-
   override def generateKeyPair(curve: EllipticCurve): Task[ECKeyPair] = {
     curve match {
       case EllipticCurve.SECP256K1 =>

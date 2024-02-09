@@ -730,7 +730,6 @@ lazy val polluxDoobie = project
 
 lazy val polluxAnoncreds = project
   .in(file("pollux/lib/anoncreds"))
-  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "pollux-anoncreds",
     Compile / unmanagedJars += baseDirectory.value / "anoncreds-jvm-1.0-SNAPSHOT.jar",
