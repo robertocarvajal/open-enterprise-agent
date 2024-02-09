@@ -813,6 +813,11 @@ lazy val prismAgentServer = project
     name := "prism-agent",
     fork := true,
     libraryDependencies ++= D_PrismAgent.serverDependencies,
+    excludeDependencies ++= Seq(
+      // Exclude `protobuf-javalite` from all dependencies since we're using scalapbRuntime which already include `protobuf-java`
+      // Having both may introduce conflict on some api https://github.com/protocolbuffers/protobuf/issues/8104
+      ExclusionRule("com.google.protobuf", "protobuf-javalite")
+    ),
     Compile / mainClass := Some("io.iohk.atala.agent.server.MainApp"),
     Docker / maintainer := "atala-coredid@iohk.io",
     Docker / dockerUsername := Some("input-output-hk"),
