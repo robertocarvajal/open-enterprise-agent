@@ -23,6 +23,7 @@ import io.iohk.atala.iam.entity.http.EntityServerEndpoints
 import io.iohk.atala.iam.wallet.http.WalletManagementServerEndpoints
 import io.iohk.atala.issue.controller.IssueServerEndpoints
 import io.iohk.atala.mercury.{DidOps, HttpClient}
+import io.iohk.atala.oidcvc.controller.Oidc4vcServerEndpoints
 import io.iohk.atala.pollux.core.service.{CredentialService, PresentationService}
 import io.iohk.atala.pollux.credentialdefinition.CredentialDefinitionRegistryServerEndpoints
 import io.iohk.atala.pollux.credentialschema.{SchemaRegistryServerEndpoints, VerificationPolicyServerEndpoints}
@@ -123,6 +124,7 @@ object AgentHttpServer {
     allEntityEndpoints <- EntityServerEndpoints.all
     allWalletManagementEndpoints <- WalletManagementServerEndpoints.all
     allEventEndpoints <- EventServerEndpoints.all
+    allOidc4vcEndpoints <- Oidc4vcServerEndpoints.all
   } yield allCredentialDefinitionRegistryEndpoints ++
     allSchemaRegistryEndpoints ++
     allVerificationPolicyEndpoints ++
@@ -134,7 +136,8 @@ object AgentHttpServer {
     allSystemEndpoints ++
     allEntityEndpoints ++
     allWalletManagementEndpoints ++
-    allEventEndpoints
+    allEventEndpoints ++
+    allOidc4vcEndpoints
   def run =
     for {
       allEndpoints <- agentRESTServiceEndpoints
