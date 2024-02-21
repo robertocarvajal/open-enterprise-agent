@@ -8,6 +8,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.oidc.TokenManager;
+import org.keycloak.protocol.oidc.endpoints.AuthorizationEndpoint;
 import org.keycloak.protocol.oidc.endpoints.TokenEndpoint;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
@@ -24,6 +25,9 @@ public class OIDC4VCTokenEndpoint extends TokenEndpoint {
     @Override
     public Response createTokenResponse(UserModel user, UserSessionModel userSession, ClientSessionContext clientSessionCtx,
                                         String scopeParam, boolean code, Function<TokenManager.AccessTokenResponseBuilder, ClientPolicyContext> clientPolicyContextGenerator) {
+        String issuerState = clientSessionCtx.getClientSession().getNote(AuthorizationEndpoint.LOGIN_SESSION_NOTE_ADDITIONAL_REQ_PARAMS_PREFIX + OIDC4VCConstants.ISSUER_STATE);
+        logger.warn("TokenEndpoint issuer_state: " + issuerState);
+
         // Only support authorization_code grant for now
         if (code) {
             Response originalResponse = super.createTokenResponse(user, userSession, clientSessionCtx, scopeParam, true, clientPolicyContextGenerator);
@@ -37,5 +41,4 @@ public class OIDC4VCTokenEndpoint extends TokenEndpoint {
             return super.createTokenResponse(user, userSession, clientSessionCtx, scopeParam, false, clientPolicyContextGenerator);
         }
     }
-
 }

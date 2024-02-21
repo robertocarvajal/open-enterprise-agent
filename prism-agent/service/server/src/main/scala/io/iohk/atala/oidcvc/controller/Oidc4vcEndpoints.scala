@@ -18,6 +18,7 @@ import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder, JsonEncoder, JsonDecoder}
 import java.util.UUID
 import io.iohk.atala.oidcvc.controller.http.IssuerMetadata
 
+// TODO: reorganize this
 package http {
 
   final case class CreateAuthorizationServerRequest(url: String)
@@ -126,9 +127,5 @@ object Oidc4vcEndpoints {
     .out(statusCode(StatusCode.Ok))
     .out(jsonBody[IssuerMetadata])
     .summary("OIDC4VC Issuer Metadata")
-
-  // TODO
-  val credentialEndpoint = baseHolderEndpoint
-  // .securityIn(???) // TODO: This should authenticate user with registered server
 
 }

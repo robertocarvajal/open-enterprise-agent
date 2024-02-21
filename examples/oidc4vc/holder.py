@@ -63,6 +63,7 @@ def start_authorization_request(auth_endpoint: str):
             "response_type": "code",
             "client_id": BOB_CLIENT_ID,
             "scope": "openid " + CREDENTIAL_CONFIGURATION_ID,
+            "issuer_state": "this-is-issuer-state",
         }
     )
     login_url = f"{auth_endpoint}?{queries}"

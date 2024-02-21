@@ -64,6 +64,17 @@ authorization: Bearer {{ admin_access_token }}
 }
 HTTP 201
 
+# Pre-register OEA client for token introspection // TODO: dynamic registration?
+POST {{ keycloak_base_url }}/admin/realms/{{ alice_keycloak_realm }}/clients
+Authorization: Bearer {{ admin_access_token }}
+{
+  "id": "alice-oea-client",
+  "authorizationServicesEnabled": true,
+  "serviceAccountsEnabled": true,
+  "secret": "1234"
+}
+HTTP 201
+
 # Pre-register holder wallet client // TODO: dynamic registration?
 POST {{ keycloak_base_url }}/admin/realms/{{ alice_keycloak_realm }}/clients
 Authorization: Bearer {{ admin_access_token }}
