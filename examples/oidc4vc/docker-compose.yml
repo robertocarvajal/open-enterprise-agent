@@ -75,7 +75,9 @@ services:
       - "host.docker.internal:host-gateway"
 
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0.6
+    # image: quay.io/keycloak/keycloak:23.0.6
+    build:
+      context: ./keycloak-oea-oidc
     ports:
       - "9980:8080"
     environment:
