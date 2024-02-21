@@ -7,7 +7,6 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolService;
 import org.keycloak.protocol.oidc.OIDCProviderConfig;
 import org.keycloak.protocol.oidc.TokenManager;
-import org.keycloak.protocol.oidc.endpoints.AuthorizationEndpoint;
 
 public class OIDC4VCLoginProtocolService extends OIDCLoginProtocolService {
     private static final Logger logger = Logger.getLogger(OIDC4VCLoginProtocolService.class);

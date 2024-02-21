@@ -5,6 +5,7 @@ import org.keycloak.Config;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.protocol.LoginProtocol;
+import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocolFactory;
 import org.keycloak.protocol.oidc.OIDCProviderConfig;
 
@@ -15,12 +16,6 @@ public class OIDC4VCLoginProtocolFactory extends OIDCLoginProtocolFactory {
     @Override
     public int order() {
         return 1;
-    }
-
-    @Override
-    public LoginProtocol create(KeycloakSession session) {
-        logger.warn("Creating an instance of OIDC4VCLoginProtocol ...");
-        return new OIDC4VCLoginProtocol().setSession(session);
     }
 
     @Override
