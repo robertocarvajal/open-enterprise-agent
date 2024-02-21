@@ -1,0 +1,108 @@
+---
+version: "3.8"
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: "pollux,connect,agent,node_db"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ../../infrastructure/shared/postgres/init-script.sh:/docker-entrypoint-initdb.d/init-script.sh
+      - ../../infrastructure/shared/postgres/max_conns.sql:/docker-entrypoint-initdb.d/max_conns.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ##########################
+  # Services
+  ##########################
+
+  prism-node:
+    image: ghcr.io/input-output-hk/prism-node:2.2.1
+    environment:
+      NODE_PSQL_HOST: db:5432
+    depends_on:
+      db:
+        condition: service_healthy
+
+  oea:
+    image: ghcr.io/input-output-hk/prism-agent:1.28.0
+    ports:
+      - 8085:8085
+    environment:
+      POLLUX_DB_HOST: db
+      POLLUX_DB_PORT: 5432
+      POLLUX_DB_NAME: pollux
+      POLLUX_DB_USER: postgres
+      POLLUX_DB_PASSWORD: postgres
+      CONNECT_DB_HOST: db
+      CONNECT_DB_PORT: 5432
+      CONNECT_DB_NAME: connect
+      CONNECT_DB_USER: postgres
+      CONNECT_DB_PASSWORD: postgres
+      AGENT_DB_HOST: db
+      AGENT_DB_PORT: 5432
+      AGENT_DB_NAME: agent
+      AGENT_DB_USER: postgres
+      AGENT_DB_PASSWORD: postgres
+      DIDCOMM_SERVICE_URL: http://${DOCKERHOST}:${PORT}/didcomm
+      PRISM_NODE_HOST: prism-node
+      PRISM_NODE_PORT: 50053
+      SECRET_STORAGE_BACKEND: postgres
+      KEYCLOAK_ENABLED: true
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: atala
+      KEYCLOAK_CLIENT_ID: oea
+      KEYCLOAK_CLIENT_SECRET: oea-secret
+      KEYCLOAK_UMA_AUTO_UPGRADE_RPT: true
+    depends_on:
+      db:
+        condition: service_healthy
+      prism-node:
+        condition: service_started
+      keycloak-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://oea:8085/_system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.6
+    ports:
+      - "9980:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev --hostname-url=http://localhost:9980 --health-enabled=true
+
+  keycloak-init:
+    image: ghcr.io/orange-opensource/hurl:4.2.0
+    volumes:
+      - ./hurl:/hurl
+    environment:
+      HURL_keycloak_base_url: http://keycloak:8080
+      HURL_keycloak_admin_user: admin
+      HURL_keycloak_admin_password: admin
+      HURL_keycloak_realm: atala
+      HURL_keycloak_client_id: oea
+      HURL_keycloak_client_secret: oea-secret
+      HURL_alice_username: alice
+      HURL_alice_password: '1234'
+      HURL_alice_keycloak_realm: external-alice-as
+      HURL_bob_username: bob
+      HURL_bob_password: '1234'
+      HURL_bob_wallet_client_id: bob-wallet
+    command:
+      - /hurl/init-keycloak.hurl
+      - --test
+    depends_on:
+      keycloak:
+        condition: service_started
