@@ -43,5 +43,5 @@ trait Apollo {
 
 object Apollo {
   val prism14Layer: ULayer[Apollo] = ZLayer.succeed(Prism14Apollo)
-  val apolloImplLayer: ULayer[Apollo] = ZLayer.succeed(ApolloImpl)
+  val kmpApolloLayer: ULayer[Apollo] = ZLayer.succeed(KmpApollo)
 }

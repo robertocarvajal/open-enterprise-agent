@@ -8,35 +8,20 @@ import zio.test.Assertion.*
 
 object ApolloSpec extends ZIOSpecDefault {
 
-  // override def spec = {
-  //   val tests = Seq(
-  //     publicKeySpec,
-  //     privateKeySpec,
-  //     ecKeyFactorySpec,
-  //     ecKeyFactoryBip32Spec
-  //   )
-  //   suite("Apollo - Prism14 implementation")(tests: _*).provideLayer(Apollo.prism14Layer) +
-  //     suite("Apollo - Apollo implementation")(tests: _*).provideLayer(Apollo.apolloImplLayer)
-  // }
-
   override def spec = {
-    suite("test")(
-      test("test") {
-        import io.iohk.atala.prism.apollo.derivation
-
-        val path = "m/0'/0'/0'/0'/0'"
-        val seedHex =
-          "fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542"
-        val seed = HexString.fromString(seedHex).get.toByteArray
-
-        for {
-          hdKey <- ZIO.attempt(derivation.HDKey(seed, 0, 0).derive(path))
-          privateKey = hdKey.getKMMSecp256k1PrivateKey().getRaw()
-          privateKeyHex = HexString.fromByteArray(privateKey)
-          _ <- ZIO.succeed(privateKeyHex).debug("privateKeyHex")
-        } yield assertCompletes
-      }
+    val tests = Seq(
+      publicKeySpec,
+      privateKeySpec,
+      ecKeyFactorySpec,
     )
+
+    // KMP Apollo only supports non-hardened BIP32 derivation
+    // https://github.com/input-output-hk/atala-prism-apollo/blob/ce739ddc0477e239c213475b88653229b9781370/apollo/src/commonMain/kotlin/io/iohk/atala/prism/apollo/derivation/HDKey.kt#L164
+    //
+    // As a consequence, BIP32 test vectors aren't tested against KMP Apollo,
+    // but KMP Apollo will be property-test against Prism14Apollo only with hardened index instead.
+    suite("Apollo - Prism14 implementation")((tests :+ ecKeyFactoryBip32Spec): _*).provideLayer(Apollo.prism14Layer) +
+      suite("Apollo - KMP Apollo implementation")(tests: _*).provideLayer(Apollo.kmpApolloLayer)
   }
 
   private val publicKeySpec = suite("ECPublicKey")(
@@ -167,7 +152,7 @@ object ApolloSpec extends ZIOSpecDefault {
         apollo <- ZIO.service[Apollo]
         decodeResult = apollo.ecKeyFactory.publicKeyFromEncoded(EllipticCurve.SECP256K1, Array.emptyByteArray)
       } yield assert(decodeResult)(isFailure)
-    } @@ TestAspect.ignore, // FIXME
+    },
     test("decode valid uncompressed secp256k1 public key successfully") {
       // priv: 0xe005dfce415d0ff46485fa37a0f035cf02fedf4b611248eb851a6b563dcf61ed
       // pub: 0x0436e35f02c325a0cdc3c98968ca5cd51601b0fd8a6e29de4dd73bf0415987bd687c6ced9dbaaa3aca617223c5adaab1109dea0a9a2a75b8fb16361cd19c05f670
@@ -281,7 +266,7 @@ object ApolloSpec extends ZIOSpecDefault {
           "m/0'/1/2'/2/1000000000",
           "471b76e389e528d6de6d816857e012c5455051cad6660850e58372a6c3e6e7c8"
         ),
-      ) @@ TestAspect.ignore, // FIXME
+      ),
       suite("Test vector 2")(
         testVector2(
           "m",
@@ -290,7 +275,7 @@ object ApolloSpec extends ZIOSpecDefault {
         testVector2(
           "m/0",
           "abe74a98f6c7eabee0428f53798f0ab8aa1bd37873999041703c742f15ac7e1e"
-        ) @@ TestAspect.tag("dev"),
+        ),
         testVector2(
           "m/0/2147483647'",
           "877c779ad9687164e9c2f4f0f4ff0340814392330693ce95a58fe18fd52e6e93"
