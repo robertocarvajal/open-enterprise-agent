@@ -38,7 +38,7 @@ trait StorageSpecHelper extends ApolloSpecHelper {
     updatedAt = Instant.EPOCH
   )
 
-  protected def generateKeyPair() = apollo.ecKeyFactory.generateKeyPair(EllipticCurve.SECP256K1)
+  protected def generateKeyPair() = apollo.secp256k1KeyFactory.generateKeyPair(EllipticCurve.SECP256K1)
 
   protected def generateCreateOperation(keyIds: Seq[String]) =
     OperationFactory(apollo).makeCreateOperationRandKey("master0")(

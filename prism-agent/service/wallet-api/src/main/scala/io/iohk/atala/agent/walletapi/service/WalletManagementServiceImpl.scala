@@ -32,7 +32,7 @@ class WalletManagementServiceImpl(
           ZIO.fail(WalletManagementServiceError.TooManyPermittedWallet())
       }
       seed <- seed.fold(
-        apollo.ecKeyFactory
+        apollo.secp256k1KeyFactory
           .randomBip32Seed()
           .map(_._1)
           .flatMap(bytes => ZIO.fromEither(WalletSeed.fromByteArray(bytes)).mapError(Exception(_)))

@@ -33,7 +33,7 @@ class KeyResolver(apollo: Apollo, nonSecretStorage: DIDNonSecretStorage, walletS
           .flatMap {
             case None => ZIO.none
             case Some(path) =>
-              apollo.ecKeyFactory
+              apollo.secp256k1KeyFactory
                 .deriveKeyPair(EllipticCurve.SECP256K1, seed.toByteArray)(path.derivationPath: _*)
                 .asSome
           }

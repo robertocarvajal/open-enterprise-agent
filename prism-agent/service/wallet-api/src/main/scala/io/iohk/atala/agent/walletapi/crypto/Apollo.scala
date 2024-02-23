@@ -6,27 +6,27 @@ import zio.*
 
 import scala.util.Try
 
-final case class ECKeyPair(publicKey: ECPublicKey, privateKey: ECPrivateKey)
+final case class ECKeyPair(publicKey: Secp256k1PublicKey, privateKey: Secp256k1PrivateKey)
 
-trait ECPublicKey {
-  def curve: EllipticCurve
+trait Secp256k1PublicKey {
+  final def curve: EllipticCurve = EllipticCurve.SECP256K1 // TODO: deprecate
   def toJavaPublicKey: java.security.interfaces.ECPublicKey
   def verify(data: Array[Byte], signature: Array[Byte]): Try[Unit]
   def encode: Array[Byte]
 }
 
-trait ECPrivateKey {
-  def curve: EllipticCurve
+trait Secp256k1PrivateKey {
+  final def curve: EllipticCurve = EllipticCurve.SECP256K1 // TODO: deprecate
   def toJavaPrivateKey: java.security.interfaces.ECPrivateKey
   def sign(data: Array[Byte]): Try[Array[Byte]]
   def encode: Array[Byte]
-  def computePublicKey: ECPublicKey
+  def computePublicKey: Secp256k1PublicKey
   override final def toString(): String = "<REDACTED>"
 }
 
-trait ECKeyFactory {
-  def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPublicKey]
-  def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPrivateKey]
+trait Secp256k1KeyFactory {
+  def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[Secp256k1PublicKey]
+  def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[Secp256k1PrivateKey]
   def generateKeyPair(curve: EllipticCurve): Task[ECKeyPair]
   def deriveKeyPair(curve: EllipticCurve, seed: Array[Byte])(path: DerivationPath*): Task[ECKeyPair]
   def randomBip32Seed(): Task[(Array[Byte], Seq[String])]
@@ -38,7 +38,7 @@ enum DerivationPath {
 }
 
 trait Apollo {
-  def ecKeyFactory: ECKeyFactory
+  def secp256k1KeyFactory: Secp256k1KeyFactory
 }
 
 object Apollo {

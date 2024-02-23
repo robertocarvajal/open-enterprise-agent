@@ -15,9 +15,7 @@ import java.security.spec.{ECPrivateKeySpec, ECPublicKeySpec}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
-final case class Prism14ECPublicKey(publicKey: io.iohk.atala.prism.crypto.keys.ECPublicKey) extends ECPublicKey {
-
-  override def curve: EllipticCurve = EllipticCurve.SECP256K1
+final case class Prism14ECPublicKey(publicKey: io.iohk.atala.prism.crypto.keys.ECPublicKey) extends Secp256k1PublicKey {
 
   override def encode: Array[Byte] = publicKey.getEncodedCompressed
 
@@ -52,9 +50,8 @@ final case class Prism14ECPublicKey(publicKey: io.iohk.atala.prism.crypto.keys.E
 
 }
 
-final case class Prism14ECPrivateKey(privateKey: io.iohk.atala.prism.crypto.keys.ECPrivateKey) extends ECPrivateKey {
-
-  override def curve: EllipticCurve = EllipticCurve.SECP256K1
+final case class Prism14ECPrivateKey(privateKey: io.iohk.atala.prism.crypto.keys.ECPrivateKey)
+    extends Secp256k1PrivateKey {
 
   override def toJavaPrivateKey: java.security.interfaces.ECPrivateKey = {
     val bytes = privateKey.getEncoded()
@@ -75,7 +72,7 @@ final case class Prism14ECPrivateKey(privateKey: io.iohk.atala.prism.crypto.keys
   override def sign(data: Array[Byte]): Try[Array[Byte]] =
     Try(EC.INSTANCE.signBytes(data, privateKey).getEncoded)
 
-  override def computePublicKey: ECPublicKey =
+  override def computePublicKey: Secp256k1PublicKey =
     Prism14ECPublicKey(EC.INSTANCE.toPublicKeyFromPrivateKey(privateKey))
 
   override def hashCode(): Int = privateKey.getHexEncoded().hashCode()
@@ -90,9 +87,9 @@ final case class Prism14ECPrivateKey(privateKey: io.iohk.atala.prism.crypto.keys
 }
 
 // TODO: support operation of other key types
-object Prism14ECKeyFactory extends ECKeyFactory {
+object Prism14ECKeyFactory extends Secp256k1KeyFactory {
 
-  override def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPrivateKey] =
+  override def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[Secp256k1PrivateKey] =
     curve match {
       case EllipticCurve.SECP256K1 =>
         Try(
@@ -101,7 +98,7 @@ object Prism14ECKeyFactory extends ECKeyFactory {
       case crv => Failure(Exception(s"Operation on curve ${crv.name} is not yet supported"))
     }
 
-  override def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPublicKey] =
+  override def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[Secp256k1PublicKey] =
     curve match {
       case EllipticCurve.SECP256K1 =>
         Try(EC.INSTANCE.toPublicKeyFromBytes(bytes))
@@ -152,5 +149,5 @@ object Prism14ECKeyFactory extends ECKeyFactory {
 }
 
 object Prism14Apollo extends Apollo {
-  override def ecKeyFactory: ECKeyFactory = Prism14ECKeyFactory
+  override def secp256k1KeyFactory: Secp256k1KeyFactory = Prism14ECKeyFactory
 }

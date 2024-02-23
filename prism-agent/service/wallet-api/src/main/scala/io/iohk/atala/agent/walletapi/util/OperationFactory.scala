@@ -1,6 +1,6 @@
 package io.iohk.atala.agent.walletapi.util
 
-import io.iohk.atala.agent.walletapi.crypto.{ECKeyPair, ECPublicKey}
+import io.iohk.atala.agent.walletapi.crypto.{ECKeyPair, Secp256k1PublicKey}
 import io.iohk.atala.agent.walletapi.model.{
   DIDPublicKeyTemplate,
   ManagedDIDTemplate,
@@ -88,7 +88,9 @@ class OperationFactory(apollo: Apollo) {
       masterKeyId: String
   )(didTemplate: ManagedDIDTemplate): IO[CreateManagedDIDError, (PrismDIDOperation.Create, CreateDIDRandKey)] = {
     for {
-      randomSeed <- apollo.ecKeyFactory.randomBip32Seed().mapBoth(CreateManagedDIDError.KeyGenerationError.apply, _._1)
+      randomSeed <- apollo.secp256k1KeyFactory
+        .randomBip32Seed()
+        .mapBoth(CreateManagedDIDError.KeyGenerationError.apply, _._1)
       operationWithHdKey <- makeCreateOperationHdKey(masterKeyId, randomSeed)(0, didTemplate)
       (operation, hdKeys) = operationWithHdKey
       keyPairs <- ZIO.foreach(hdKeys.keyPaths) { case (id, path) =>
@@ -152,7 +154,9 @@ class OperationFactory(apollo: Apollo) {
       actions: Seq[UpdateManagedDIDAction]
   ): IO[UpdateManagedDIDError, (PrismDIDOperation.Update, UpdateDIDRandKey)] = {
     for {
-      randomSeed <- apollo.ecKeyFactory.randomBip32Seed().mapBoth(UpdateManagedDIDError.KeyGenerationError.apply, _._1)
+      randomSeed <- apollo.secp256k1KeyFactory
+        .randomBip32Seed()
+        .mapBoth(UpdateManagedDIDError.KeyGenerationError.apply, _._1)
       operationWithHdKey <- makeUpdateOperationHdKey(randomSeed)(
         did,
         previousOperationHash,
@@ -212,10 +216,10 @@ class OperationFactory(apollo: Apollo) {
   }
 
   private def deriveSecp256k1KeyPair(seed: Array[Byte], path: ManagedDIDHdKeyPath): Task[ECKeyPair] = {
-    apollo.ecKeyFactory.deriveKeyPair(EllipticCurve.SECP256K1, seed)(path.derivationPath: _*)
+    apollo.secp256k1KeyFactory.deriveKeyPair(EllipticCurve.SECP256K1, seed)(path.derivationPath: _*)
   }
 
-  private def toPublicKeyData(publicKey: ECPublicKey): PublicKeyData = PublicKeyData.ECCompressedKeyData(
+  private def toPublicKeyData(publicKey: Secp256k1PublicKey): PublicKeyData = PublicKeyData.ECCompressedKeyData(
     crv = publicKey.curve,
     data = Base64UrlString.fromByteArray(publicKey.encode),
   )

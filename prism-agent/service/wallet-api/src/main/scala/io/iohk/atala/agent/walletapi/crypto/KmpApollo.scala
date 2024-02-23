@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Failure, Success}
 import io.iohk.atala.shared.models.HexString
 
-final case class KmpApolloPublicKey(publicKey: KMMECSecp256k1PublicKey) extends ECPublicKey {
+final case class KmpApolloSecp256k1PublicKey(publicKey: KMMECSecp256k1PublicKey) extends Secp256k1PublicKey {
 
   override def verify(data: Array[Byte], signature: Array[Byte]): Try[Unit] =
     Try(publicKey.verify(signature, data))
@@ -39,13 +39,11 @@ final case class KmpApolloPublicKey(publicKey: KMMECSecp256k1PublicKey) extends 
   }
   override def encode: Array[Byte] = publicKey.getCompressed()
 
-  override def curve: EllipticCurve = EllipticCurve.SECP256K1
-
   override def hashCode(): Int = HexString.fromByteArray(publicKey.getCompressed()).hashCode()
 
   override def equals(x: Any): Boolean = {
     x match {
-      case KmpApolloPublicKey(otherPK) =>
+      case KmpApolloSecp256k1PublicKey(otherPK) =>
         HexString.fromByteArray(publicKey.getCompressed()) == HexString.fromByteArray(otherPK.getCompressed())
       case _ => false
     }
@@ -53,11 +51,11 @@ final case class KmpApolloPublicKey(publicKey: KMMECSecp256k1PublicKey) extends 
 
 }
 
-final case class KmpApolloPrivateKey(privateKey: KMMECSecp256k1PrivateKey) extends ECPrivateKey {
+final case class KmpApolloSecp256k1PrivateKey(privateKey: KMMECSecp256k1PrivateKey) extends Secp256k1PrivateKey {
 
   override def sign(data: Array[Byte]): Try[Array[Byte]] = Try(privateKey.sign(data))
 
-  override def computePublicKey: ECPublicKey = KmpApolloPublicKey(privateKey.getPublicKey())
+  override def computePublicKey: Secp256k1PublicKey = KmpApolloSecp256k1PublicKey(privateKey.getPublicKey())
 
   override def toJavaPrivateKey: java.security.interfaces.ECPrivateKey = {
     val bytes = privateKey.getEncoded()
@@ -75,13 +73,11 @@ final case class KmpApolloPrivateKey(privateKey: KMMECSecp256k1PrivateKey) exten
 
   override def encode: Array[Byte] = privateKey.getEncoded()
 
-  override def curve: EllipticCurve = EllipticCurve.SECP256K1
-
   override def hashCode(): Int = HexString.fromByteArray(privateKey.getEncoded()).hashCode()
 
   override def equals(x: Any): Boolean = {
     x match {
-      case KmpApolloPrivateKey(otherPK) =>
+      case KmpApolloSecp256k1PrivateKey(otherPK) =>
         HexString.fromByteArray(privateKey.getEncoded()) == HexString.fromByteArray(otherPK.getEncoded())
       case _ => false
     }
@@ -89,13 +85,13 @@ final case class KmpApolloPrivateKey(privateKey: KMMECSecp256k1PrivateKey) exten
 
 }
 
-object KmpApolloFactory extends ECKeyFactory {
+object KmpApolloFactory extends Secp256k1KeyFactory {
 
-  override def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPublicKey] = {
+  override def publicKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[Secp256k1PublicKey] = {
     curve match {
       case EllipticCurve.SECP256K1 =>
         Try(KMMECSecp256k1PublicKey.Companion.secp256k1FromBytes(bytes))
-          .map(pk => KmpApolloPublicKey(pk))
+          .map(pk => KmpApolloSecp256k1PublicKey(pk))
       case crv => Failure(Exception(s"Operation on curve ${crv.name} is not yet supported"))
     }
   }
@@ -117,8 +113,8 @@ object KmpApolloFactory extends ECKeyFactory {
           val publicKey = privateKey.getPublicKey()
 
           ECKeyPair(
-            KmpApolloPublicKey(publicKey),
-            KmpApolloPrivateKey(privateKey)
+            KmpApolloSecp256k1PublicKey(publicKey),
+            KmpApolloSecp256k1PrivateKey(privateKey)
           )
         }
       case crv => ZIO.fail(Exception(s"Operation on curve ${crv.name} is not yet supported"))
@@ -131,11 +127,11 @@ object KmpApolloFactory extends ECKeyFactory {
     seed -> words.asScala.toList
   }
 
-  override def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[ECPrivateKey] = {
+  override def privateKeyFromEncoded(curve: EllipticCurve, bytes: Array[Byte]): Try[Secp256k1PrivateKey] = {
     curve match {
       case EllipticCurve.SECP256K1 =>
         Try(KMMECSecp256k1PrivateKey.Companion.secp256k1FromByteArray(bytes))
-          .map(pk => KmpApolloPrivateKey(pk))
+          .map(pk => KmpApolloSecp256k1PrivateKey(pk))
       case crv => Failure(Exception(s"Operation on curve ${crv.name} is not yet supported"))
     }
   }
@@ -148,8 +144,8 @@ object KmpApolloFactory extends ECKeyFactory {
           val privateKey = KMMECSecp256k1PrivateKey(randBytes)
           val publicKey = privateKey.getPublicKey
           ECKeyPair(
-            KmpApolloPublicKey(publicKey),
-            KmpApolloPrivateKey(privateKey),
+            KmpApolloSecp256k1PublicKey(publicKey),
+            KmpApolloSecp256k1PrivateKey(privateKey),
           )
         }
       case crv => ZIO.fail(Exception(s"Operation on curve ${crv.name} is not yet supported"))
@@ -161,5 +157,5 @@ object KmpApollo extends Apollo {
   val secpLib: Secp256k1Lib = Secp256k1Lib()
   val secureRandom: SecureRandom = SecureRandom()
 
-  override def ecKeyFactory: ECKeyFactory = KmpApolloFactory
+  override def secp256k1KeyFactory: Secp256k1KeyFactory = KmpApolloFactory
 }
