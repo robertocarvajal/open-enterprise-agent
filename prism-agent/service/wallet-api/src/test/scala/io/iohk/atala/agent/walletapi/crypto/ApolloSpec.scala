@@ -15,13 +15,14 @@ object ApolloSpec extends ZIOSpecDefault {
       ecKeyFactorySpec,
     )
 
-    // KMP Apollo only supports non-hardened BIP32 derivation
+    // KMP Apollo only supports hardened BIP32 derivation
     // https://github.com/input-output-hk/atala-prism-apollo/blob/ce739ddc0477e239c213475b88653229b9781370/apollo/src/commonMain/kotlin/io/iohk/atala/prism/apollo/derivation/HDKey.kt#L164
     //
     // As a consequence, BIP32 test vectors aren't tested against KMP Apollo,
     // but KMP Apollo will be property-test against Prism14Apollo only with hardened index instead.
     suite("Apollo - Prism14 implementation")((tests :+ ecKeyFactoryBip32Spec): _*).provideLayer(Apollo.prism14Layer) +
-      suite("Apollo - KMP Apollo implementation")(tests: _*).provideLayer(Apollo.kmpApolloLayer)
+      suite("Apollo - KMP Apollo implementation")(tests: _*).provideLayer(Apollo.kmpApolloLayer) +
+      suite("Apollo - Prism14 and KMP Apollo derive the same BIP32 keys")(compareBip32Spec)
   }
 
   private val publicKeySpec = suite("ECPublicKey")(
@@ -306,4 +307,18 @@ object ApolloSpec extends ZIOSpecDefault {
     )
   }
 
+  private val compareBip32Spec = suite("BIP32 key derivation comparison")(
+    test("all implementations derive the same key for all hardened index") {
+      check(Gen.listOfBounded(0, 5)(Gen.int(0, 10000))) { indice =>
+        val path = indice.map(DerivationPath.Hardened(_))
+        val apollo1 = Prism14Apollo.ecKeyFactory
+        val apollo2 = KmpApollo.ecKeyFactory
+        for {
+          seed <- apollo1.randomBip32Seed().map(_._1)
+          keyPair1 <- apollo1.deriveKeyPair(EllipticCurve.SECP256K1, seed)(path: _*)
+          keyPair2 <- apollo2.deriveKeyPair(EllipticCurve.SECP256K1, seed)(path: _*)
+        } yield assert(keyPair1.privateKey.encode)(equalTo(keyPair2.privateKey.encode))
+      }
+    }
+  )
 }
