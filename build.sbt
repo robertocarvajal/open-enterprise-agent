@@ -87,7 +87,7 @@ lazy val V = new {
   val jsonSchemaValidator = "1.3.3"
 
   val vaultDriver = "6.2.0"
-  val micrometer = "1.11.2"
+  val micrometer = "1.11.9"
 
   val nimbusJwt = "10.0.0"
   val keycloak = "22.0.4" // scala-steward:off
