@@ -56,7 +56,7 @@ class KeycloakClientImpl(client: AuthzClient, httpClient: Client, override val k
   private val baseFormHeaders = Headers(Header.ContentType(MediaType.application.`x-www-form-urlencoded`))
 
   // TODO: support offline introspection
-  // https://www.keycloak.org/docs/22.0.4/securing_apps/#_token_introspection_endpoint
+  // https://www.keycloak.org/docs/22.0.5/securing_apps/#_token_introspection_endpoint
   override def introspectToken(token: AccessToken): IO[KeycloakClientError, TokenIntrospection] = {
     (for {
       url <- ZIO.fromEither(URL.decode(introspectionUrl)).orDie
