@@ -18,7 +18,7 @@ import java.util.function.Function;
 public class OIDC4VCTokenEndpoint extends TokenEndpoint {
     private static final Logger logger = Logger.getLogger(OIDC4VCTokenEndpoint.class);
 
-    private OEAClient oeaClient;
+    private final OEAClient oeaClient;
 
     public OIDC4VCTokenEndpoint(KeycloakSession session, TokenManager tokenManager, EventBuilder event) {
         super(session, tokenManager, event);
@@ -36,12 +36,12 @@ public class OIDC4VCTokenEndpoint extends TokenEndpoint {
             String noteKey = AuthorizationEndpoint.LOGIN_SESSION_NOTE_ADDITIONAL_REQ_PARAMS_PREFIX + OIDC4VCConstants.ISSUER_STATE;
             String issuerState = clientSessionCtx.getClientSession().getNote(noteKey);
             logger.warn("TokenEndpoint issuer_state: " + issuerState);
-            oeaClient.syncTokenDetails(issuerState);
+            OEAClient.NonceResponse nonceResponse = oeaClient.syncTokenDetails(issuerState);
 
             // Modify TokenResponse
             AccessTokenResponse responseEntity = (AccessTokenResponse) originalResponse.getEntity();
-            responseEntity.setOtherClaims(OIDC4VCConstants.C_NONCE, "yet-another-nonce");
-            responseEntity.setOtherClaims(OIDC4VCConstants.C_NONCE_EXPIRE, 86400); // FIXME hardcoded expiration
+            responseEntity.setOtherClaims(OIDC4VCConstants.C_NONCE, nonceResponse.getNonce());
+            responseEntity.setOtherClaims(OIDC4VCConstants.C_NONCE_EXPIRE, nonceResponse.getNonceExpiresIn());
             return Response.fromResponse(originalResponse)
                     .entity(responseEntity)
                     .build();

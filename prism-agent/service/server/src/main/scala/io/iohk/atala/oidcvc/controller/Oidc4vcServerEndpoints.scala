@@ -5,6 +5,7 @@ import io.iohk.atala.iam.authentication.Authenticator
 import io.iohk.atala.iam.authentication.Authorizer
 import io.iohk.atala.iam.authentication.DefaultAuthenticator
 import io.iohk.atala.iam.authentication.SecurityLogic
+import io.iohk.atala.oidcvc.controller.http.NonceResponse
 import sttp.tapir.ztapir.*
 import zio.*
 
@@ -33,10 +34,25 @@ class Oidc4vcServerEndpoints(
         ZIO.dieMessage("TODO") // TODO: implement
       }
 
+  private val nonceServerEndpoint: ZServerEndpoint[Any, Any] =
+    Oidc4vcEndpoints.nonce
+      .serverLogic { case (_, request) =>
+        for {
+          random <- ZIO.random.flatMap(_.nextLongBetween(0, Long.MaxValue))
+          response <- ZIO.right(
+            NonceResponse(
+              nonce = request.issuerState + "." + s"${random.toHexString}",
+              nonceExpiresIn = 86400
+            )
+          )
+        } yield response
+      }
+
   val all: List[ZServerEndpoint[Any, Any]] = List(
     createAuthServerServerEndpoint,
     createCredentialOfferServerEndpoint,
-    getIssuerMetadataServerEndpoint
+    getIssuerMetadataServerEndpoint,
+    nonceServerEndpoint
   )
 }
 

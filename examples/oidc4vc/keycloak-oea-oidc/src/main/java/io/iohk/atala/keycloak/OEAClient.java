@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 public class OEAClient {
 
     private static final Logger logger = Logger.getLogger(OEAClient.class);
-    private static final String oeaBaseUrl = "http://localhost:8085/oidc4vc/nonce";
+    private static final String oeaBaseUrl = "http://localhost:8085";
 
     private final Supplier<CloseableHttpClient> httpClient = OEAClient::newCloseableHttpClient;
 
@@ -63,13 +63,15 @@ public class OEAClient {
 
     public static class NonceResponse {
         private String nonce;
+        private int nonceExpiresIn;
 
         public NonceResponse() {
             // for reflection
         }
 
         public static NonceResponse fromResponse(CloseableHttpResponse response) throws RuntimeException {
-            if (response.getStatusLine().getStatusCode() == 200) {
+            int statusCode = response.getStatusLine().getStatusCode();
+            if (statusCode == 200) {
                 try (response) {
                     HttpEntity entity = response.getEntity();
                     String jsonString = EntityUtils.toString(entity);
@@ -79,7 +81,7 @@ public class OEAClient {
                     throw new RuntimeException(e);
                 }
             } else {
-                throw new RuntimeException("The response status from OEA was not successful");
+                throw new RuntimeException("The response status from OEA was not successful: " + statusCode);
             }
         }
 
@@ -89,6 +91,14 @@ public class OEAClient {
 
         public void setNonce(String nonce) {
             this.nonce = nonce;
+        }
+
+        public int getNonceExpiresIn() {
+            return nonceExpiresIn;
+        }
+
+        public void setNonceExpiresIn(int nonceExpiresIn) {
+            this.nonceExpiresIn = nonceExpiresIn;
         }
     }
 }

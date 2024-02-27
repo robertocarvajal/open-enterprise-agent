@@ -9,6 +9,9 @@ import io.iohk.atala.iam.authentication.oidc.JwtSecurityLogic.jwtAuthHeader
 import io.iohk.atala.oidcvc.controller.http.CreateAuthorizationServerRequest
 import io.iohk.atala.oidcvc.controller.http.CreateCredentialOfferRequest
 import io.iohk.atala.oidcvc.controller.http.CreateCredentialOfferResponse
+import io.iohk.atala.oidcvc.controller.http.IssuerMetadata
+import io.iohk.atala.oidcvc.controller.http.NonceRequest
+import io.iohk.atala.oidcvc.controller.http.NonceResponse
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.zio.jsonBody
@@ -16,7 +19,6 @@ import sttp.tapir.json.zio.schemaForZioJsonValue
 import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder, JsonEncoder, JsonDecoder}
 
 import java.util.UUID
-import io.iohk.atala.oidcvc.controller.http.IssuerMetadata
 
 // TODO: reorganize this
 package http {
@@ -67,6 +69,24 @@ package http {
     given decoder: JsonDecoder[IssuerMetadata] =
       DeriveJsonDecoder.gen[IssuerMetadata]
     given schema: Schema[IssuerMetadata] = Schema.derived
+  }
+
+  final case class NonceRequest(issuerState: String)
+  object NonceRequest {
+    given encoder: JsonEncoder[NonceRequest] =
+      DeriveJsonEncoder.gen[NonceRequest]
+    given decoder: JsonDecoder[NonceRequest] =
+      DeriveJsonDecoder.gen[NonceRequest]
+    given schema: Schema[NonceRequest] = Schema.derived
+  }
+
+  final case class NonceResponse(nonce: String, nonceExpiresIn: Int)
+  object NonceResponse {
+    given encoder: JsonEncoder[NonceResponse] =
+      DeriveJsonEncoder.gen[NonceResponse]
+    given decoder: JsonDecoder[NonceResponse] =
+      DeriveJsonDecoder.gen[NonceResponse]
+    given schema: Schema[NonceResponse] = Schema.derived
   }
 
 }
@@ -127,5 +147,19 @@ object Oidc4vcEndpoints {
     .out(statusCode(StatusCode.Ok))
     .out(jsonBody[IssuerMetadata])
     .summary("OIDC4VC Issuer Metadata")
+
+  val nonce: Endpoint[
+    Unit,
+    (RequestContext, NonceRequest),
+    ErrorResponse,
+    NonceResponse,
+    Any
+  ] =
+    basePublicEndpoint.post
+      .in("nonce")
+      .in(jsonBody[NonceRequest])
+      .errorOut(EndpointOutputs.basicFailureAndNotFoundAndForbidden)
+      .out(statusCode(StatusCode.Ok))
+      .out(jsonBody[NonceResponse])
 
 }

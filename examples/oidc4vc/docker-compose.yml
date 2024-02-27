@@ -78,19 +78,21 @@ services:
     # image: quay.io/keycloak/keycloak:23.0.6
     build:
       context: ./keycloak-oea-oidc
-    ports:
-      - "9980:8080"
+    # ports:
+    #   - "9980:8080"
+    network_mode: host
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-    command: start-dev --hostname-url=http://localhost:9980 --health-enabled=true
+    command: start-dev --hostname-url=http://localhost:9980 --http-port=9980 --health-enabled=true
 
   keycloak-init:
     image: ghcr.io/orange-opensource/hurl:4.2.0
+    network_mode: host
     volumes:
       - ./hurl:/hurl
     environment:
-      HURL_keycloak_base_url: http://keycloak:8080
+      HURL_keycloak_base_url: http://localhost:9980
       HURL_keycloak_admin_user: admin
       HURL_keycloak_admin_password: admin
       HURL_keycloak_realm: atala
