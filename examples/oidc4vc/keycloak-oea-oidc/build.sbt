@@ -4,7 +4,7 @@ ThisBuild / autoScalaLibrary := false
 ThisBuild / crossPaths       := false
 
 val V = new {
-  val keycloak = "23.0.6"
+  val keycloak = "23.0.7"
 }
 
 lazy val root = (project in file("."))
@@ -13,6 +13,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "org.keycloak" % "keycloak-core" % V.keycloak % "provided",
       "org.keycloak" % "keycloak-common" % V.keycloak % "provided",
+      "org.keycloak" % "keycloak-adapter-core" % V.keycloak % "provided",
       "org.keycloak" % "keycloak-saml-core" % V.keycloak % "provided",
       "org.keycloak" % "keycloak-saml-core-public" % V.keycloak % "provided",
       "org.keycloak" % "keycloak-server-spi" % V.keycloak % "provided",

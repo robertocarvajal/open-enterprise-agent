@@ -20,7 +20,7 @@ public class OIDC4VCAuthorizationEndpoint extends AuthorizationEndpoint {
     @Override
     protected AuthenticationSessionModel createAuthenticationSession(ClientModel client, String requestState) {
         AuthenticationSessionModel authSession = super.createAuthenticationSession(client, requestState);
-        authSession.setClientNote(OIDC4VCConstants.ISSUER_STATE, this.issuerState);
+        authSession.setClientNote(OIDC4VCConstants.ISSUER_STATE, issuerState);
         return super.createAuthenticationSession(client, requestState);
     }
 }

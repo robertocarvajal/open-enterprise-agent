@@ -124,3 +124,14 @@ Authorization: Bearer {{ admin_access_token }}
 }
 HTTP 201
 
+# Create Chad in Alice's realm
+POST {{ keycloak_base_url }}/admin/realms/{{ alice_keycloak_realm }}/users
+Authorization: Bearer {{ admin_access_token }}
+{
+  "username": "chad",
+  "firstName": "Chad",
+  "enabled": true,
+  "credentials": [{"value": "{{ bob_password }}", "temporary": false}]
+}
+HTTP 201
+
